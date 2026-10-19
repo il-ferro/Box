@@ -14,8 +14,8 @@
 <style>
 :root{
   --bg:#111214; --card:#1b1d21; --card2:#24272c; --line:#2f333a;
-  --text:#f2f2f0; --muted:#9a9ea6; --acc:#ff7a1a; --acc-ink:#1a0d00;
-  --ok:#3ecf8e; --warn:#ffb020; --bad:#ff5a5a;
+  --text:#f2f2f0; --muted:#9a9ea6; --acc:#e3202b; --acc-ink:#ffffff;
+  --ok:#3ecf8e; --warn:#ffb020; --bad:#ff6b6b;
   --r:14px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -108,6 +108,13 @@ details.grp[open] summary::after{transform:rotate(90deg)}
 .tile.empty{opacity:.5}
 .back{background:none;color:var(--acc);padding:10px 0 2px}
 .gtitle{font-size:22px;font-weight:700;margin:4px 0 12px}
+.tile.pinned{box-shadow:inset 0 0 0 2px var(--acc)}
+.tile .ti{position:relative}.tile .pin{position:absolute;left:30px;top:-6px;font-size:15px;font-style:normal}
+.pinbtn{background:var(--card);font-size:14px;padding:8px 12px;border-radius:20px;color:var(--muted)}
+.pinbtn.on{background:var(--acc);color:var(--acc-ink)}
+.urow{display:grid;grid-template-columns:1fr 70px 24px 32px;gap:6px;align-items:center;margin-bottom:8px}
+.urow select{padding:10px 8px;font-size:15px}.urow input{padding:10px 6px;text-align:center}
+.urow .uu{color:var(--muted);font-size:13px}.urow button{padding:6px 0}
 .offline{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
 </style>
@@ -258,7 +265,7 @@ function defaultMaint(m){
   const oil = re => (S.items.find(i => i.unit === 'L' && re.test(i.name)) || {}).id || '';
   const h = +m.hours || 0;
   return [
-    {id:uid(), what:'Cambio olio cambio', every:15, lastH:h, oil:oil(/15w|cambio/i), liters:0.8},
+    {id:uid(), what:'Cambio olio', every:15, lastH:h, oil:oil(/15w|cambio/i), liters:0.8},
     {id:uid(), what:'Pistone', every:15, lastH:h, oil:'', liters:0},
     {id:uid(), what:'Pulizia filtro aria', every:5, lastH:h, oil:'', liters:0},
     {id:uid(), what:'Olio forcella', every:45, lastH:h, oil:oil(/forcella/i), liters:0},
@@ -289,8 +296,14 @@ function migrate(){
       delete m.name;
     }
     m.log ||= []; m.specs ||= [];
-    m.log.forEach(l => { l.id ||= uid(); });
+    const ren = w => /^\s*cambio olio cambio\s*$/i.test(w || '') ? 'Cambio olio' : w;
+    m.log.forEach(l => { l.id ||= uid(); l.what = ren(l.what); });
+    (m.maint || []).forEach(t => { t.what = ren(t.what); });
     if (!m.maint) m.maint = defaultMaint(m);
+    m.maint.forEach(t => {
+      if (!t.uses) t.uses = t.oil && +t.liters > 0 ? [{itemId:t.oil, qty:+t.liters}] : [];
+      delete t.oil; delete t.liters;
+    });
   });
   S.items.forEach(it => {
     if (it.buy == null) it.buy = 1;
@@ -355,10 +368,12 @@ function compat(it){
 }
 function renderMotoFilter(el, after){
   if (!S.motos.length){ el.innerHTML = ''; return; }
-  const all = [{id:'tutte', label:'Tutte le moto'}, ...S.motos.map(m => ({id:m.id, label:motoName(m)}))];
+  const all = [{id:'tutte', label:'Tutte le moto'}, ...motosSorted().map(m => ({id:m.id, label:(m.pinned ? '📌 ' : '') + motoName(m)}))];
   el.innerHTML = all.map(m => `<button class="chip ${S.mf===m.id?'on':''}" data-m="${m.id}">${esc(m.label)}</button>`).join('');
   el.querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mf = b.dataset.m; save(); after(); });
 }
+/* Moto fissate in alto */
+const motosSorted = () => [...S.motos.filter(m => m.pinned), ...S.motos.filter(m => !m.pinned)];
 const modelList = () => `<datalist id="models">${[...new Set(S.motos.map(m => m.model).filter(Boolean))].map(x => `<option>${esc(x)}</option>`).join('')}</datalist>`;
 
 /* ---------- Navigazione ---------- */
@@ -403,7 +418,7 @@ function stockGroups(){
   const oils = S.items.filter(i => i.cat === 'olio');
   if (S.smode === 'cat') return CATS.map(c => ({id:c.id, label:c.label, icon:ICON[c.id], list:S.items.filter(i => i.cat === c.id)}));
   const parts = S.items.filter(i => i.cat !== 'olio');
-  const g = S.motos.map(m => ({id:m.id, label:motoName(m), icon:'🏍️', moto:m, list:parts.filter(i => i.model && fits(i, m))}));
+  const g = motosSorted().map(m => ({id:m.id, label:motoName(m), icon:m.pinned ? '📌' : '🏍️', moto:m, list:parts.filter(i => i.model && fits(i, m))}));
   const used = new Set(g.flatMap(x => x.list));
   g.push({id:'_gen', label:'Per tutte le moto / altro', icon:'📦', list:parts.filter(i => !used.has(i))});
   g.push({id:'_oil', label:'Olio e liquidi', icon:ICON.olio, list:oils});
@@ -676,19 +691,21 @@ function renderMoto(){
   if (!sel){
     // elenco a blocchi
     S.msel = null;
-    $('#moto').innerHTML = `<div class="tiles" style="margin-top:0">${S.motos.map(m => {
+    $('#moto').innerHTML = `<div class="tiles" style="margin-top:0">${motosSorted().map(m => {
       const due = (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d <= 0; }).length;
       const soon = (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d > 0 && d <= Math.max(1, t.every * 0.2); }).length;
-      return `<button class="tile" data-mt="${m.id}"><span class="ti">🏍️</span>
+      return `<button class="tile ${m.pinned ? 'pinned' : ''}" data-mt="${m.id}"><span class="ti">🏍️${m.pinned ? '<i class="pin">📌</i>' : ''}</span>
         <b>${esc([m.brand, m.model].filter(Boolean).join(' '))}</b>
         <span class="tc">${esc([m.year, (+m.hours || 0).toLocaleString('it-IT') + ' ore'].filter(Boolean).join(' · '))}</span>
         <span class="tc">${due ? `<em style="color:var(--bad)">${due} ${due === 1 ? 'lavoro scaduto' : 'lavori scaduti'}</em>` : soon ? `<em>${soon} in scadenza</em>` : 'Manutenzione ok'}</span>
       </button>`;
     }).join('')}</div>`;
     $('#moto').querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { S.msel = b.dataset.mt; save(); renderMoto(); window.scrollTo(0, 0); });
+    if (S.motos.length > 1 && !S.motos.some(m => m.pinned)) $('#moto').insertAdjacentHTML('beforeend', '<div class="note" style="text-align:center">Apri una moto e tocca 📌 per fissarla in alto.</div>');
     return;
   }
-  $('#moto').innerHTML = `<button class="back" data-mback>‹ Tutte le moto</button>` + [sel].map(m => {
+  $('#moto').innerHTML = `<div class="row" style="justify-content:space-between"><button class="back" data-mback>‹ Tutte le moto</button>
+    <button class="pinbtn ${sel.pinned ? 'on' : ''}" data-pin>📌 ${sel.pinned ? 'Fissata' : 'Fissa in alto'}</button></div>` + [sel].map(m => {
     const nItems = S.items.filter(i => i.model && fits(i, m)).length;
     const maint = [...(m.maint || [])].sort((a, b) => (dueIn(m, a) ?? 1e9) - (dueIn(m, b) ?? 1e9));
     const groups = logGroups(m);
@@ -700,12 +717,12 @@ function renderMoto(){
 
       <h2 style="margin-top:20px">Manutenzione</h2>
       ${maint.length ? maint.map(t => {
-        const d = dueIn(m, t), oil = S.items.find(i => i.id === t.oil);
+        const d = dueIn(m, t), ut = usesText(t.uses);
         const st = d === null ? '' : d <= 0 ? 'zero' : d <= Math.max(1, t.every * 0.2) ? 'low' : '';
         const when = d === null ? 'quando serve' : d <= 0 ? `scaduto da ${fmtH(-d)}` : `fra ${fmtH(d)}`;
         return `<div class="mt ${st}" data-t="${t.id}">
           <div class="grow" data-te><div class="name">${esc(t.what)}</div>
-          <div class="meta">${t.every > 0 ? 'ogni ' + fmtH(t.every) + ' · ' : ''}<b class="due">${when}</b>${oil && t.liters > 0 ? ' · ' + fmt(t.liters, 'L') + ' ' + esc(oil.name) : ''}</div></div>
+          <div class="meta">${t.every > 0 ? 'ogni ' + fmtH(t.every) + ' · ' : ''}<b class="due">${when}</b>${ut ? ' · ' + esc(ut) : ''}</div></div>
           <button data-td>Fatto</button></div>`;
       }).join('') : '<div class="meta">Nessuna voce. Aggiungi la tua tabella di manutenzione.</div>'}
       <button class="ghost" data-ta style="margin-top:6px">+ Aggiungi voce di manutenzione</button>
@@ -713,7 +730,7 @@ function renderMoto(){
       <h2 style="margin-top:20px">Storico lavori</h2>
       ${groups.length ? groups.map(g => `<details class="grp">
         <summary><b>${esc(g.name)}</b><span>${g.list.length}× · ultimo ${fmtD(g.list[0].date)}${g.list[0].hours !== '' && g.list[0].hours != null ? ' a ' + fmtH(+g.list[0].hours) : ''}</span></summary>
-        ${g.list.map(l => `<div class="lg" data-li="${l.id}"><span>${fmtD(l.date)}</span><span>${l.hours !== '' && l.hours != null ? fmtH(+l.hours) : ''} ✕</span></div>`).join('')}
+        ${g.list.map(l => `<div class="lg" data-li="${l.id}"><span>${fmtD(l.date)}${l.note ? ' · ' + esc(l.note) : ''}</span><span>${l.hours !== '' && l.hours != null ? fmtH(+l.hours) : ''} ✎</span></div>`).join('')}
       </details>`).join('') : '<div class="meta">Ancora nessun lavoro registrato.</div>'}
       <button class="ghost" data-l style="margin-top:6px">+ Registra un altro lavoro</button>
 
@@ -723,6 +740,7 @@ function renderMoto(){
     </div>`;
   }).join('');
   $('#moto [data-mback]').onclick = () => { S.msel = null; save(); renderMoto(); window.scrollTo(0, 0); };
+  $('#moto [data-pin]').onclick = () => { sel.pinned = !sel.pinned; save(); renderMoto(); toast(sel.pinned ? 'Fissata in cima all\'elenco' : 'Non più fissata'); };
   $('#moto').querySelectorAll('[data-m]').forEach(c => {
     const m = S.motos.find(x => x.id === c.dataset.m);
     c.querySelector('[data-h]').onclick = () => hoursSheet(m);
@@ -735,10 +753,31 @@ function renderMoto(){
       r.querySelector('[data-te]').onclick = () => taskSheet(m, t);
       r.querySelector('[data-td]').onclick = () => doneSheet(m, t);
     });
-    c.querySelectorAll('[data-li]').forEach(r => r.onclick = () => {
-      if (confirm('Eliminare questo lavoro dallo storico?')){ m.log = m.log.filter(l => l.id !== r.dataset.li); save(); renderMoto(); }
-    });
+    c.querySelectorAll('[data-li]').forEach(r => r.onclick = () => editLogSheet(m, m.log.find(l => l.id === r.dataset.li)));
   });
+}
+/* Modifica un lavoro già registrato */
+function editLogSheet(m, l){
+  const names = [...new Set([...(m.maint || []).map(t => t.what), ...m.log.map(x => x.what)])];
+  openSheet(`<h3>Modifica lavoro</h3><div class="meta">${esc(motoName(m))}</div>
+    <label>Cosa hai fatto</label><input id="e-w" list="e-sug" value="${esc(l.what)}">
+    <datalist id="e-sug">${names.map(n => `<option>${esc(n)}</option>`).join('')}</datalist>
+    <div class="grid2">
+      <div><label>Data</label><input id="e-d" type="date" value="${esc(String(l.date).slice(0,10))}"></div>
+      <div><label>Ore motore</label><input id="e-h" type="number" inputmode="decimal" step="0.1" value="${l.hours ?? ''}"></div>
+    </div>
+    <label>Note</label><input id="e-n" value="${esc(l.note || '')}" placeholder="es. Usato olio Motorex">
+    <div class="actions"><button class="danger" id="e-del">Elimina</button><button class="acc" id="e-ok">Salva</button></div>`);
+  $('#e-ok').onclick = () => {
+    const w = $('#e-w').value.trim(); if (!w){ $('#e-w').focus(); return; }
+    const h = num('#e-h');
+    Object.assign(l, {what:w, date:$('#e-d').value || l.date, hours:h ?? '', note:$('#e-n').value.trim()});
+    save(); closeSheet(); renderMoto(); toast('Salvato');
+  };
+  $('#e-del').onclick = () => {
+    if (!confirm('Eliminare questo lavoro dallo storico?')) return;
+    m.log = m.log.filter(x => x !== l); save(); closeSheet(); renderMoto();
+  };
 }
 function hoursSheet(m){
   openSheet(`<h3>Ore motore</h3><label>${esc(motoName(m))}</label>
@@ -746,23 +785,71 @@ function hoursSheet(m){
     <div class="actions"><button class="acc" id="h-ok">Salva</button></div>`);
   $('#h-ok').onclick = () => { m.hours = num('#h-v') ?? 0; save(); closeSheet(); renderMoto(); };
 }
+/* ---- Materiali usati (oli e pezzi) ---- */
+function itemOptions(m, sel){
+  const list = S.items.filter(i => fits(i, m));
+  return `<option value="">— scegli —</option>` + CATS.map(c => {
+    const g = list.filter(i => i.cat === c.id).sort(byName);
+    return g.length ? `<optgroup label="${c.label}">${g.map(i => `<option value="${i.id}" ${i.id === sel ? 'selected' : ''}>${esc(i.name)} (hai ${fmt(i.qty, i.unit)})</option>`).join('')}</optgroup>` : '';
+  }).join('');
+}
+function usesBlock(title){
+  return `<h2 style="margin:20px 0 6px">${title}</h2><div id="uses"></div>
+    <button class="ghost" id="u-add">+ Aggiungi olio o pezzo</button>`;
+}
+function mountUses(m, uses){
+  const box = $('#uses');
+  const row = u => {
+    const it = S.items.find(i => i.id === u.itemId);
+    const d = document.createElement('div'); d.className = 'urow';
+    d.innerHTML = `<select data-ui>${itemOptions(m, u.itemId)}</select>
+      <input data-uq type="number" inputmode="decimal" step="any" value="${u.qty ?? ''}" placeholder="qtà">
+      <span data-uu class="uu">${it ? (it.unit === 'L' ? 'L' : 'pz') : ''}</span>
+      <button class="danger" data-ux aria-label="Togli">✕</button>`;
+    d.querySelector('[data-ui]').onchange = e => {
+      const i = S.items.find(x => x.id === e.target.value);
+      d.querySelector('[data-uu]').textContent = i ? (i.unit === 'L' ? 'L' : 'pz') : '';
+      if (i && !d.querySelector('[data-uq]').value) d.querySelector('[data-uq]').value = 1;
+    };
+    d.querySelector('[data-ux]').onclick = () => d.remove();
+    box.appendChild(d);
+  };
+  box.innerHTML = '';
+  (uses || []).forEach(row);
+  if (!uses || !uses.length) box.innerHTML = '';
+  $('#u-add').onclick = () => row({itemId:'', qty:''});
+  box.setUses = list => { box.innerHTML = ''; list.forEach(row); };
+}
+function readUses(){
+  return [...document.querySelectorAll('#uses .urow')].map(d => ({
+    itemId:d.querySelector('[data-ui]').value,
+    qty:Math.max(0, parseFloat(String(d.querySelector('[data-uq]').value).replace(',', '.')) || 0)
+  })).filter(u => u.itemId && u.qty > 0);
+}
+function applyUses(uses){
+  uses.forEach(u => { const it = S.items.find(i => i.id === u.itemId); if (it) it.qty = Math.max(0, r2(it.qty - u.qty)); });
+  return uses.length ? `scalati ${uses.length} ${uses.length === 1 ? 'articolo' : 'articoli'}` : '';
+}
+const usesText = uses => (uses || []).map(u => { const it = S.items.find(i => i.id === u.itemId); return it ? fmt(u.qty, it.unit) + ' ' + it.name : ''; }).filter(Boolean).join(' · ');
+
 function taskSheet(m, t){
   const isNew = !t;
-  t = t || {id:uid(), what:'', every:0, lastH:+m.hours || 0, oil:'', liters:0};
+  t = t || {id:uid(), what:'', every:0, lastH:+m.hours || 0, uses:[]};
   openSheet(`<h3>${isNew ? 'Nuova voce' : 'Modifica voce'}</h3>
-    <label>Lavoro</label><input id="t-w" list="t-sug" value="${esc(t.what)}" placeholder="es. Cambio olio cambio">
-    <datalist id="t-sug"><option>Cambio olio cambio</option><option>Pistone</option><option>Pulizia filtro aria</option><option>Candela</option><option>Catena e corona</option><option>Liquido freni</option><option>Olio forcella</option><option>Olio mono</option><option>Liquido refrigerante</option></datalist>
+    <label>Lavoro</label><input id="t-w" list="t-sug" value="${esc(t.what)}" placeholder="es. Cambio olio">
+    <datalist id="t-sug"><option>Cambio olio</option><option>Pistone</option><option>Pulizia filtro aria</option><option>Candela</option><option>Catena e corona</option><option>Liquido freni</option><option>Olio forcella</option><option>Olio mono</option><option>Liquido refrigerante</option></datalist>
     <div class="grid2">
       <div><label>Ogni quante ore</label><input id="t-e" type="number" inputmode="decimal" step="0.5" value="${t.every || ''}" placeholder="0 = quando serve"></div>
       <div><label>Fatto l'ultima volta a</label><input id="t-l" type="number" inputmode="decimal" step="0.1" value="${t.lastH ?? ''}" placeholder="ore"></div>
     </div>
-    <label>Olio / liquido che usa</label><select id="t-o">${oilOptions(m, t.oil)}</select>
-    <label>Litri per ogni intervento</label><input id="t-q" type="number" inputmode="decimal" step="0.05" value="${t.liters || ''}" placeholder="es. 0,8">
-    <div class="note">Quando premi "Fatto" scala questi litri dal magazzino e riparte il conto delle ore.</div>
+    ${usesBlock('Cosa usa ogni volta')}
+    <div class="note">Oli e pezzi che servono per questo lavoro. Quando premi "Fatto" li scala dal magazzino.</div>
     <div class="actions">${isNew ? '' : '<button class="danger" id="t-del">Elimina</button>'}<button class="acc" id="t-ok">Salva</button></div>`);
+  mountUses(m, t.uses);
+  if (isNew) $('#u-add').click();
   $('#t-ok').onclick = () => {
     const w = $('#t-w').value.trim(); if (!w){ $('#t-w').focus(); return; }
-    Object.assign(t, {what:w, every:Math.max(0, num('#t-e') ?? 0), lastH:num('#t-l') ?? 0, oil:$('#t-o').value, liters:Math.max(0, num('#t-q') ?? 0)});
+    Object.assign(t, {what:w, every:Math.max(0, num('#t-e') ?? 0), lastH:num('#t-l') ?? 0, uses:readUses()});
     if (isNew) m.maint.push(t);
     save(); closeSheet(); renderMoto(); toast('Salvato');
   };
@@ -771,25 +858,23 @@ function taskSheet(m, t){
     m.maint = m.maint.filter(x => x !== t); save(); closeSheet(); renderMoto();
   };
 }
-function useOil(sel, qsel){
-  const o = S.items.find(i => i.id === $(sel).value), q = num(qsel);
-  if (o && q > 0){ o.qty = Math.max(0, r2(o.qty - q)); return `scalati ${fmt(q, 'L')}`; }
-  return '';
-}
 function doneSheet(m, t){
   openSheet(`<h3>${esc(t.what)}</h3><div class="meta">${esc(motoName(m))}</div>
     <div class="grid2">
       <div><label>Data</label><input id="d-d" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div><label>Ore motore</label><input id="d-h" type="number" inputmode="decimal" step="0.1" value="${m.hours || 0}"></div>
     </div>
-    <label>Olio / liquido usato</label><select id="d-o">${oilOptions(m, t.oil)}</select>
-    <label>Litri usati</label><input id="d-q" type="number" inputmode="decimal" step="0.05" value="${t.liters || ''}">
+    ${usesBlock('Cosa hai usato')}
+    <div class="note">Controlla le quantità: verranno scalate dal magazzino.</div>
+    <label>Note</label><input id="d-n" placeholder="Opzionale">
     <div class="actions"><button class="acc" id="d-ok">Segna come fatto</button></div>`);
+  mountUses(m, t.uses);
   $('#d-ok').onclick = () => {
     const h = num('#d-h') ?? (+m.hours || 0);
+    const used = readUses();
     t.lastH = h; if (h > (+m.hours || 0)) m.hours = h;
-    m.log.unshift({id:uid(), date:$('#d-d').value || new Date().toISOString().slice(0,10), hours:h, what:t.what});
-    const msg = useOil('#d-o', '#d-q');
+    m.log.unshift({id:uid(), date:$('#d-d').value || new Date().toISOString().slice(0,10), hours:h, what:t.what, note:$('#d-n').value.trim(), used});
+    const msg = applyUses(used);
     save(); closeSheet(); renderMoto(); toast('Fatto' + (msg ? ' · ' + msg : ''));
   };
 }
@@ -803,17 +888,23 @@ function logSheet(m){
       <div><label>Data</label><input id="l-d" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div><label>Ore motore</label><input id="l-h" type="number" inputmode="decimal" step="0.1" value="${m.hours || ''}"></div>
     </div>
-    <label>Hai usato liquidi? (scala dal magazzino)</label><select id="l-o">${oilOptions(m, '')}</select>
-    <label>Litri usati</label><input id="l-q" type="number" inputmode="decimal" step="0.05" placeholder="es. 0,25">
+    ${usesBlock('Cosa hai usato')}
+    <label>Note</label><input id="l-n" placeholder="Opzionale">
     <div class="actions"><button class="acc" id="l-ok">Salva</button></div>`);
+  mountUses(m, []);
+  // se il nome corrisponde a una voce di manutenzione, propone i suoi materiali
+  $('#l-w').onchange = () => {
+    const t = (m.maint || []).find(x => x.what.trim().toLowerCase() === $('#l-w').value.trim().toLowerCase());
+    if (t && t.uses && t.uses.length && !readUses().length) $('#uses').setUses(t.uses);
+  };
   $('#l-ok').onclick = () => {
     const what = $('#l-w').value.trim(); if (!what){ $('#l-w').focus(); return; }
-    const h = num('#l-h');
-    m.log.unshift({id:uid(), date:$('#l-d').value || new Date().toISOString().slice(0,10), hours:h ?? '', what});
+    const h = num('#l-h'), used = readUses();
+    m.log.unshift({id:uid(), date:$('#l-d').value || new Date().toISOString().slice(0,10), hours:h ?? '', what, note:$('#l-n').value.trim(), used});
     if (h !== null && h > (m.hours || 0)) m.hours = h;
     const t = (m.maint || []).find(x => x.what.trim().toLowerCase() === what.toLowerCase());
     if (t && h !== null) t.lastH = h;
-    const msg = useOil('#l-o', '#l-q');
+    const msg = applyUses(used);
     save(); closeSheet(); renderMoto(); toast('Registrato' + (msg ? ' · ' + msg : ''));
   };
 }
