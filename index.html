@@ -35,11 +35,13 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted
 .qty{font-variant-numeric:tabular-nums;font-weight:700;font-size:20px;text-align:right;min-width:64px}
 .qty small{font-size:12px;color:var(--muted);font-weight:500}
 .low .qty{color:var(--warn)}.zero .qty{color:var(--bad)}
-.bar{height:5px;background:var(--card2);border-radius:3px;margin-top:10px;overflow:hidden}
+.bar{height:6px;background:var(--card2);border-radius:3px;margin-top:10px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--ok);border-radius:3px}
 .low .bar i{background:var(--warn)}.zero .bar i{background:var(--bad)}
+.barlbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:3px}
 .steps{display:flex;gap:6px;margin-top:10px}
 .steps button{flex:1}
+.steps.four button{padding:10px 4px;font-size:15px}
 button{font:inherit;border:0;border-radius:10px;padding:10px 12px;background:var(--card2);color:var(--text);font-weight:600;cursor:pointer}
 button:active{transform:scale(.97)}
 button.acc{background:var(--acc);color:var(--acc-ink)}
@@ -51,24 +53,26 @@ button.danger{background:transparent;color:var(--bad)}
 .chip.on{background:var(--text);color:var(--bg)}
 .motochips .chip.on{background:var(--acc);color:var(--acc-ink)}
 .motochips{margin:6px 0 2px}
-.steps.four button{padding:10px 4px;font-size:15px}
 input,select,textarea{font:inherit;width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
 label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px}
 .search{margin:6px 0 4px}
 .empty{color:var(--muted);text-align:center;padding:28px 10px}
 .check{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
 .done .check{background:var(--ok);border-color:var(--ok)}
 .done .check::after{content:"✓";color:#06281a;font-weight:800;font-size:15px}
 .done .name{text-decoration:line-through;color:var(--muted)}
-.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);margin-left:6px;vertical-align:2px}
-.tag.auto{background:#3a2a10;color:var(--warn)}
+.buyrow{display:flex;gap:8px;align-items:center;margin-top:10px}
+.buyrow input{width:90px;flex:none;text-align:center;padding:10px 6px}
+.buyrow span{color:var(--muted);font-size:14px}
+.buyrow button{margin-left:auto}
 .spec{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
 .spec:last-child{border:0}.spec span:first-child{color:var(--muted)}.spec span:last-child{text-align:right}
 .big{font-size:40px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
 .fab{position:fixed;right:18px;bottom:calc(88px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--acc);color:var(--acc-ink);font-size:32px;font-weight:400;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:0;z-index:5}
-nav{position:fixed;left:0;right:0;bottom:0;background:rgba(22,23,26,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:6}
-nav button{flex:1;background:none;color:var(--muted);font-size:11px;font-weight:600;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(22,23,26,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:6px 4px calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav button{flex:1;background:none;color:var(--muted);font-size:10.5px;font-weight:600;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
 nav button svg{width:24px;height:24px}
 nav button.on{color:var(--acc)}
 .badge{position:absolute;top:2px;left:calc(50% + 6px);background:var(--bad);color:#fff;font-size:11px;border-radius:9px;padding:1px 6px;min-width:18px}
@@ -84,6 +88,17 @@ nav button.on{color:var(--acc)}
 .mt{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .mt .due{font-weight:600;color:var(--ok)}.mt.low .due{color:var(--warn)}.mt.zero .due{color:var(--bad)}
 .mt button{padding:8px 12px}
+details.grp{border-bottom:1px solid var(--line)}
+details.grp summary{list-style:none;padding:10px 0;display:flex;justify-content:space-between;gap:10px;cursor:pointer}
+details.grp summary::-webkit-details-marker{display:none}
+details.grp summary b{font-weight:600}
+details.grp summary span{color:var(--muted);font-size:13px;text-align:right}
+details.grp summary::after{content:"›";color:var(--muted);transition:transform .2s}
+details.grp[open] summary::after{transform:rotate(90deg)}
+.lg{display:flex;justify-content:space-between;padding:7px 0 7px 12px;font-size:14px;color:var(--muted);border-top:1px dashed var(--line)}
+.mixadd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.mixadd button{padding:12px 4px}
+.cond{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);margin-left:6px;vertical-align:2px}
 .offline{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
 </style>
@@ -109,6 +124,12 @@ nav button.on{color:var(--acc)}
     <div id="shop"></div>
   </section>
 
+  <!-- PARTI VECCHIE -->
+  <section class="view" id="v-old">
+    <input class="search" id="qo" placeholder="Cerca parte, moto, posto…" autocomplete="off">
+    <div id="old"></div>
+  </section>
+
   <!-- MOTO -->
   <section class="view" id="v-moto">
     <button class="acc" id="addMoto" style="width:100%;padding:14px;margin:6px 0 12px">+ Aggiungi moto</button>
@@ -119,13 +140,14 @@ nav button.on{color:var(--acc)}
   <section class="view" id="v-mix">
     <div class="card">
       <label style="margin-top:0">Benzina (litri)</label>
-      <div class="row"><input id="mixL" type="number" inputmode="decimal" value="5" step="0.5" min="0"></div>
-      <div class="chips" style="margin-top:10px" id="mixQuick"></div>
+      <input id="mixL" type="number" inputmode="decimal" step="0.1" min="0">
+      <div class="mixadd" id="mixAdd"></div>
+      <button id="mixZero" style="width:100%;margin-top:8px">Azzera</button>
       <label>Rapporto</label>
       <div class="chips" id="mixRatio"></div>
       <div style="text-align:center;margin:22px 0 4px">
         <div class="meta">Olio 2T da aggiungere</div>
-        <div class="big" id="mixOut">125 ml</div>
+        <div class="big" id="mixOut">0 ml</div>
       </div>
       <button class="acc" style="width:100%;padding:14px;margin-top:10px" id="mixUse">Fatto, scala dal magazzino</button>
       <div class="note" id="mixNote"></div>
@@ -148,6 +170,7 @@ nav button.on{color:var(--acc)}
 <nav>
   <button data-v="stock" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M7 21v-8h10v8"/><path d="M7 17h10"/></svg>Magazzino</button>
   <button data-v="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6"/></svg>Spesa<span class="badge" id="shopBadge" hidden></span></button>
+  <button data-v="old"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Vecchie</button>
   <button data-v="moto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-7h5l3 7"/><path d="M14 10l-2-4h-2"/><path d="M16 6h3l-2 4"/></svg>Moto<span class="badge" id="motoBadge" hidden></span></button>
   <button data-v="mix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/><path d="M9 15a3 3 0 0 0 3 3"/></svg>Miscela</button>
 </nav>
@@ -161,19 +184,20 @@ nav button.on{color:var(--acc)}
 const KEY = 'box-garage-v1';
 const uid = () => Math.random().toString(36).slice(2, 10);
 const CATS = [
-  {id:'olio', label:'Oli e liquidi', unit:'L'},
-  {id:'ricambio', label:'Ricambi', unit:'pz'},
-  {id:'consumo', label:'Consumabili', unit:'pz'},
-  {id:'attrezzi', label:'Attrezzi', unit:'pz'}
+  {id:'olio', label:'Oli e liquidi'},
+  {id:'ricambio', label:'Ricambi'},
+  {id:'consumo', label:'Consumabili'},
+  {id:'attrezzi', label:'Attrezzi'}
 ];
-const catLabel = id => (CATS.find(c => c.id === id) || {label:id}).label;
+const CONDS = ['Buono', 'Usurato', 'Da riparare', 'Rotto', 'Da vendere'];
 
 function seed(){
-  const m = uid();
+  const it = (name, cat, unit, qty, min, buy, barMax, extra = {}) =>
+    ({id:uid(), name, cat, unit, qty, min, buy, barMax, model:'SX 125', yFrom:'', yTo:'', loc:'', code:'', note:'', ...extra});
   return {
-    v:1,
+    v:3,
     motos:[{
-      id:m, name:'KTM SX 125 (2025)', note:'Allestimento supermoto', hours:0,
+      id:uid(), brand:'KTM', model:'SX 125', year:'2025', note:'Allestimento supermoto', hours:0,
       specs:[
         ['Miscela','Olio 2T sintetico JASO FD · 1:40'],
         ['Olio cambio','15W-50 JASO MA2 · 0,8 L'],
@@ -186,55 +210,69 @@ function seed(){
       log:[]
     }],
     items:[
-      {id:uid(), name:'Olio miscela 2T sintetico', cat:'olio', unit:'L', qty:1, min:1, moto:m, loc:'', code:'', note:'JASO FD', use:'mix'},
-      {id:uid(), name:'Olio cambio 15W-50', cat:'olio', unit:'L', qty:1, min:0.8, moto:m, loc:'', code:'', note:'JASO MA2 · cambio = 0,8 L', step:0.8},
-      {id:uid(), name:'Liquido refrigerante', cat:'olio', unit:'L', qty:1, min:1, moto:m, loc:'', code:'', note:''},
-      {id:uid(), name:'Liquido freni DOT 4', cat:'olio', unit:'L', qty:0.25, min:0.25, moto:m, loc:'', code:'', note:''},
-      {id:uid(), name:'Olio frizione minerale', cat:'olio', unit:'L', qty:0.1, min:0.1, moto:m, loc:'', code:'', note:'Per frizione Brembo'},
-      {id:uid(), name:'Olio forcella SAE 4', cat:'olio', unit:'L', qty:0, min:0, moto:m, loc:'', code:'', note:''},
-      {id:uid(), name:'Candela', cat:'ricambio', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:'Controlla il codice sul manuale'},
-      {id:uid(), name:'Kit pistone', cat:'ricambio', unit:'pz', qty:0, min:1, moto:m, loc:'', code:'', note:''},
-      {id:uid(), name:'Filtro aria', cat:'ricambio', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:''},
-      {id:uid(), name:'Olio filtro aria', cat:'consumo', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:''},
-      {id:uid(), name:'Lubrificante catena', cat:'consumo', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:''}
+      it('Olio miscela 2T sintetico', 'olio', 'L', 1, 1, 1, 10, {model:'', note:'JASO FD', use:'mix'}),
+      it('Olio cambio 15W-50', 'olio', 'L', 1, 0.8, 1, 2, {model:'', note:'JASO MA2 · cambio = 0,8 L'}),
+      it('Liquido refrigerante', 'olio', 'L', 1, 1, 1, 2, {model:''}),
+      it('Liquido freni DOT 4', 'olio', 'L', 0.25, 0.25, 0.5, 1, {model:''}),
+      it('Olio frizione minerale', 'olio', 'L', 0.1, 0.1, 0.25, 0.5, {model:'', note:'Per frizione Brembo'}),
+      it('Olio forcella SAE 4', 'olio', 'L', 0, 0, 1, 2, {model:''}),
+      it('Candela', 'ricambio', 'pz', 1, 1, 1, 0, {note:'Controlla il codice sul manuale'}),
+      it('Kit pistone', 'ricambio', 'pz', 0, 1, 1, 0, {yFrom:'2023', yTo:'2025'}),
+      it('Filtro aria', 'ricambio', 'pz', 1, 1, 1, 0),
+      it('Olio filtro aria', 'consumo', 'pz', 1, 1, 1, 0, {model:''}),
+      it('Lubrificante catena', 'consumo', 'pz', 1, 1, 1, 0, {model:''})
     ],
-    shop:[],
-    mixRatio:40,
-    lastBackup:null
+    old:[], shop:[], mixRatio:40, mixL:0, lastBackup:null
   };
 }
 
-/* Tabella manutenzione di partenza (modificabile dall'utente) */
+/* Tabella manutenzione di partenza (modificabile) */
 function defaultMaint(m){
-  if (!/ktm.*125/i.test(m.name)) return [];
+  if (!/ktm/i.test(m.brand) || !/125/.test(m.model)) return [];
   const oil = re => (S.items.find(i => i.unit === 'L' && re.test(i.name)) || {}).id || '';
+  const h = +m.hours || 0;
   return [
-    {id:uid(), what:'Cambio olio cambio', every:15, lastH:+m.hours || 0, oil:oil(/15w|cambio/i), liters:0.8},
-    {id:uid(), what:'Pistone', every:15, lastH:+m.hours || 0, oil:'', liters:0},
-    {id:uid(), what:'Pulizia filtro aria', every:5, lastH:+m.hours || 0, oil:'', liters:0},
-    {id:uid(), what:'Olio forcella', every:45, lastH:+m.hours || 0, oil:oil(/forcella/i), liters:0},
-    {id:uid(), what:'Liquido freni', every:0, lastH:+m.hours || 0, oil:oil(/freni|dot/i), liters:0}
+    {id:uid(), what:'Cambio olio cambio', every:15, lastH:h, oil:oil(/15w|cambio/i), liters:0.8},
+    {id:uid(), what:'Pistone', every:15, lastH:h, oil:'', liters:0},
+    {id:uid(), what:'Pulizia filtro aria', every:5, lastH:h, oil:'', liters:0},
+    {id:uid(), what:'Olio forcella', every:45, lastH:h, oil:oil(/forcella/i), liters:0},
+    {id:uid(), what:'Liquido freni', every:0, lastH:h, oil:oil(/freni|dot/i), liters:0}
   ];
 }
-const dueIn = (m, t) => +t.every > 0 ? Math.round(((+t.lastH || 0) + +t.every - (+m.hours || 0)) * 10) / 10 : null;
-const dueCount = () => S.motos.reduce((n, m) => n + (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d <= 0; }).length, 0);
 
 let S;
 function load(){
   try { const raw = localStorage.getItem(KEY); S = raw ? JSON.parse(raw) : seed(); }
   catch(e){ S = seed(); }
-  S.shop ||= []; S.motos ||= []; S.items ||= [];
-  S.items.forEach(it => { if (it.buy == null) it.buy = 1; });
-  S.motos.forEach(m => { m.log ||= []; m.specs ||= []; if (!m.maint) m.maint = defaultMaint(m); });
-  if (!S.mf || (S.mf !== 'tutte' && !S.motos.some(m => m.id === S.mf))) S.mf = 'tutte';
+  migrate();
 }
-/* filtro moto: gli articoli "generici" compaiono con tutte le moto */
-const motoMatch = it => S.mf === 'tutte' || !it.moto || it.moto === S.mf;
-function renderMotoFilter(el, after){
-  if (!S.motos.length){ el.innerHTML = ''; return; }
-  const all = [{id:'tutte', name:'Tutte le moto'}, ...S.motos];
-  el.innerHTML = all.map(m => `<button class="chip ${S.mf===m.id?'on':''}" data-m="${m.id}">${esc(m.name)}</button>`).join('');
-  el.querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mf = b.dataset.m; save(); after(); });
+/* Converte i dati delle versioni precedenti senza perdere niente */
+function migrate(){
+  S.shop ||= []; S.motos ||= []; S.items ||= []; S.old ||= [];
+  if (S.mixL == null) S.mixL = 0;
+  S.motos.forEach(m => {
+    if (m.model == null){
+      const r = /^(\S+)\s*(.*?)\s*(?:\((\d{4})\))?\s*$/.exec(m.name || '') || [];
+      m.brand = r[1] || m.name || ''; m.model = r[2] || ''; m.year = r[3] || '';
+      delete m.name;
+    }
+    m.log ||= []; m.specs ||= [];
+    m.log.forEach(l => { l.id ||= uid(); });
+    if (!m.maint) m.maint = defaultMaint(m);
+  });
+  S.items.forEach(it => {
+    if (it.buy == null) it.buy = 1;
+    if ('moto' in it){
+      const m = S.motos.find(x => x.id === it.moto);
+      it.model = m ? m.model : ''; it.yFrom = m ? (m.year || '') : ''; it.yTo = it.yFrom;
+      delete it.moto;
+    }
+    it.model ??= ''; it.yFrom ??= ''; it.yTo ??= '';
+    if (it.barMax == null) it.barMax = it.unit === 'L' ? Math.max(1, Math.ceil(Math.max(+it.qty || 0, (+it.min || 0) * 2))) : 0;
+    delete it.step;
+  });
+  if (!S.mf || (S.mf !== 'tutte' && !S.motos.some(m => m.id === S.mf))) S.mf = 'tutte';
+  S.v = 3;
 }
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -247,18 +285,42 @@ try { navigator.storage && navigator.storage.persist && navigator.storage.persis
 /* ---------- Utili ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmt = (n, u) => {
-  n = Math.round((+n || 0) * 100) / 100;
-  const s = n.toLocaleString('it-IT', {maximumFractionDigits:2});
-  return u === 'L' ? s + ' L' : s + ' pz';
-};
-const motoName = id => (S.motos.find(m => m.id === id) || {}).name || '';
+const r2 = n => Math.round((+n || 0) * 100) / 100;
+const fmtN = n => r2(n).toLocaleString('it-IT', {maximumFractionDigits:2});
+const fmt = (n, u) => fmtN(n) + (u === 'L' ? ' L' : ' pz');
+const fmtH = h => (Math.round(h * 10) / 10).toLocaleString('it-IT') + ' h';
+const num = sel => { const v = parseFloat(String($(sel).value).replace(',', '.')); return isNaN(v) ? null : v; };
+const motoName = m => [m.brand, m.model].filter(Boolean).join(' ') + (m.year ? ` (${m.year})` : '');
 const isLow = it => +it.min > 0 && +it.qty < +it.min;
+const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 let tT; function toast(t){ const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => e.classList.remove('on'), 1800); }
+
+/* Compatibilità: un pezzo senza modello va bene per tutte le moto */
+function fits(it, m){
+  if (!m) return true;
+  if (!it.model) return true;
+  if (!norm(m.brand + m.model).includes(norm(it.model))) return false;
+  const y = +m.year; if (!y) return true;
+  return (!it.yFrom || y >= +it.yFrom) && (!it.yTo || y <= +it.yTo);
+}
+const curMoto = () => S.motos.find(m => m.id === S.mf);
+const motoMatch = it => S.mf === 'tutte' || fits(it, curMoto());
+function compat(it){
+  if (!it.model) return '';
+  const y = it.yFrom && it.yTo ? (it.yFrom === it.yTo ? it.yFrom : `${it.yFrom}–${it.yTo}`) : it.yFrom ? `dal ${it.yFrom}` : it.yTo ? `fino al ${it.yTo}` : '';
+  return it.model + (y ? ' ' + y : '');
+}
+function renderMotoFilter(el, after){
+  if (!S.motos.length){ el.innerHTML = ''; return; }
+  const all = [{id:'tutte', label:'Tutte le moto'}, ...S.motos.map(m => ({id:m.id, label:motoName(m)}))];
+  el.innerHTML = all.map(m => `<button class="chip ${S.mf===m.id?'on':''}" data-m="${m.id}">${esc(m.label)}</button>`).join('');
+  el.querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mf = b.dataset.m; save(); after(); });
+}
+const modelList = () => `<datalist id="models">${[...new Set(S.motos.map(m => m.model).filter(Boolean))].map(x => `<option>${esc(x)}</option>`).join('')}</datalist>`;
 
 /* ---------- Navigazione ---------- */
 let view = 'stock';
-const titles = {stock:'Magazzino', shop:'Da comprare', moto:'Le mie moto', mix:'Miscela'};
+const titles = {stock:'Magazzino', shop:'Da comprare', old:'Parti vecchie', moto:'Le mie moto', mix:'Miscela'};
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.v));
 function go(v){
   view = v;
@@ -281,15 +343,15 @@ function renderStock(){
   renderCats();
   renderMotoFilter($('#motoF'), renderStock);
   const q = $('#q').value.trim().toLowerCase();
-  let list = S.items.filter(it => {
+  const list = S.items.filter(it => {
     if (!motoMatch(it)) return false;
-    if (cat === 'basso' && !isLow(it) && +it.qty > 0) return false;
+    if (cat === 'basso' && !isLow(it)) return false;
     if (cat !== 'tutti' && cat !== 'basso' && it.cat !== cat) return false;
-    if (q && !(it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note).toLowerCase().includes(q)) return false;
+    if (q && !(it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note + ' ' + it.model).toLowerCase().includes(q)) return false;
     return true;
   });
-  const total = S.items.length, low = S.items.filter(isLow).length;
-  $('#subtitle').textContent = `${total} articoli` + (low ? ` · ${low} da ricomprare` : '');
+  const low = S.items.filter(isLow).length;
+  $('#subtitle').textContent = `${S.items.length} articoli` + (low ? ` · ${low} da ricomprare` : '');
   if (!list.length){ $('#stock').innerHTML = `<div class="empty">Niente qui.<br>Tocca + per aggiungere.</div>`; return; }
   const groups = {};
   list.forEach(it => (groups[it.cat] ||= []).push(it));
@@ -301,14 +363,15 @@ function renderStock(){
     g.forEach(it => {
       const cls = +it.qty <= 0 ? 'zero' : isLow(it) ? 'low' : '';
       const steps = it.unit === 'L' ? [-1, -0.25, 0.25, 1] : [-1, 1];
-      const pct = it.min > 0 ? Math.min(100, it.qty / (it.min * 2) * 100) : (it.qty > 0 ? 100 : 0);
-      const meta = [S.mf === 'tutte' && it.moto && motoName(it.moto), it.code, it.loc && '📍 ' + it.loc, it.note].filter(Boolean).join(' · ');
+      const meta = [compat(it), it.code, it.loc && '📍 ' + it.loc, it.note].filter(Boolean).join(' · ');
+      const bar = +it.barMax > 0 ? `<div class="bar"><i style="width:${Math.min(100, it.qty / it.barMax * 100)}%"></i></div>
+        <div class="barlbl"><span>0</span><span>${fmt(it.barMax, it.unit)}</span></div>` : '';
       html += `<div class="card ${cls}" data-id="${it.id}">
         <div class="row" data-open>
-          <div class="grow"><div class="name">${esc(it.name)}</div><div class="meta">${esc(meta) || (it.min ? 'Minimo ' + fmt(it.min, it.unit) : '&nbsp;')}</div></div>
-          <div class="qty">${fmt(it.qty, it.unit).replace(/ (L|pz)$/, ' <small>$1</small>')}</div>
+          <div class="grow"><div class="name">${esc(it.name)}</div><div class="meta">${esc(meta) || 'Per tutte le moto'}</div></div>
+          <div class="qty">${fmtN(it.qty)} <small>${it.unit === 'L' ? 'L' : 'pz'}</small></div>
         </div>
-        ${it.unit === 'L' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}
+        ${bar}
         <div class="steps ${steps.length > 2 ? 'four' : ''}">
           ${steps.map(s => `<button data-d="${s}">${s < 0 ? '−' : '+'} ${it.unit === 'L' ? fmt(Math.abs(s), 'L') : Math.abs(s)}</button>`).join('')}
         </div>
@@ -326,30 +389,41 @@ $('#q').oninput = renderStock;
 
 function adjust(it, d){
   const before = isLow(it);
-  it.qty = Math.max(0, Math.round((+it.qty + d) * 100) / 100);
+  it.qty = Math.max(0, r2(+it.qty + d));
   save(); renderStock();
   if (!before && isLow(it)) toast(`${it.name} aggiunto alla spesa`);
 }
 
 function itemSheet(it){
   const isNew = !it;
-  it = it || {id:uid(), name:'', cat:'ricambio', unit:'pz', qty:1, min:0, buy:1, moto:S.mf !== 'tutte' ? S.mf : '', loc:'', code:'', note:''};
+  const cm = curMoto();
+  it = it || {id:uid(), name:'', cat:'ricambio', unit:'pz', qty:1, min:0, buy:1, barMax:0, model:cm ? cm.model : '', yFrom:cm ? cm.year : '', yTo:cm ? cm.year : '', loc:'', code:'', note:''};
   openSheet(`
     <h3>${isNew ? 'Nuovo articolo' : 'Modifica'}</h3>
-    <label>Nome</label><input id="f-name" value="${esc(it.name)}" placeholder="es. Olio cambio 15W-50">
+    <label>Nome</label><input id="f-name" value="${esc(it.name)}" placeholder="es. Pastiglie freno anteriori">
     <div class="grid2">
       <div><label>Categoria</label><select id="f-cat">${CATS.map(c => `<option value="${c.id}" ${it.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select></div>
       <div><label>Unità</label><select id="f-unit"><option value="pz" ${it.unit==='pz'?'selected':''}>Pezzi</option><option value="L" ${it.unit==='L'?'selected':''}>Litri</option></select></div>
     </div>
     <label>Quantità che hai ora</label><input id="f-qty" type="number" inputmode="decimal" step="any" value="${it.qty}">
-    <h2 style="margin:18px 0 0">Riordino</h2>
+
+    <h2 style="margin:20px 0 0">Per quali moto</h2>
+    <div class="grid3">
+      <div><label>Modello</label><input id="f-model" list="models" value="${esc(it.model)}" placeholder="es. SX 125"></div>
+      <div><label>Dall'anno</label><input id="f-y1" type="number" inputmode="numeric" value="${esc(it.yFrom)}" placeholder="2023"></div>
+      <div><label>All'anno</label><input id="f-y2" type="number" inputmode="numeric" value="${esc(it.yTo)}" placeholder="2025"></div>
+    </div>${modelList()}
+    <div class="note">Lascia vuoto il modello se va bene per tutte le moto. Puoi scrivere anche solo "SX".</div>
+
+    <h2 style="margin:20px 0 0">Riordino</h2>
     <div class="grid2">
       <div><label>Avvisami quando ne ho meno di</label><input id="f-min" type="number" inputmode="decimal" step="any" value="${it.min}"></div>
       <div><label>Quanto ne compro ogni volta</label><input id="f-buy" type="number" inputmode="decimal" step="any" value="${it.buy ?? 1}"></div>
     </div>
-    <div class="note">Metti 0 nel primo campo se non vuoi che vada mai in lista della spesa.</div>
-    <label>Per quale moto</label>
-    <select id="f-moto"><option value="">Tutte / generico</option>${S.motos.map(m => `<option value="${m.id}" ${it.moto===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
+    <label>Barra piena a (0 = niente barra)</label><input id="f-bar" type="number" inputmode="decimal" step="any" value="${it.barMax || 0}" placeholder="es. 10">
+    <div class="note">Metti 0 in "Avvisami" se non vuoi che vada mai nella spesa.</div>
+
+    <h2 style="margin:20px 0 0">Altro</h2>
     <div class="grid2">
       <div><label>Dove si trova</label><input id="f-loc" value="${esc(it.loc)}" placeholder="Scaffale 2"></div>
       <div><label>Codice</label><input id="f-code" value="${esc(it.code)}" placeholder="Opzionale"></div>
@@ -365,10 +439,10 @@ function itemSheet(it){
     if (!name){ $('#f-name').focus(); return; }
     Object.assign(it, {
       name, cat:$('#f-cat').value, unit:$('#f-unit').value,
-      qty:Math.max(0, parseFloat(String($('#f-qty').value).replace(',', '.')) || 0),
-      min:Math.max(0, parseFloat(String($('#f-min').value).replace(',', '.')) || 0),
-      buy:Math.max(0, parseFloat(String($('#f-buy').value).replace(',', '.')) || 0),
-      moto:$('#f-moto').value, loc:$('#f-loc').value.trim(), code:$('#f-code').value.trim(), note:$('#f-note').value.trim()
+      qty:Math.max(0, num('#f-qty') ?? 0), min:Math.max(0, num('#f-min') ?? 0),
+      buy:Math.max(0, num('#f-buy') ?? 0), barMax:Math.max(0, num('#f-bar') ?? 0),
+      model:$('#f-model').value.trim(), yFrom:$('#f-y1').value.trim(), yTo:$('#f-y2').value.trim(),
+      loc:$('#f-loc').value.trim(), code:$('#f-code').value.trim(), note:$('#f-note').value.trim()
     });
     if (isNew) S.items.push(it);
     save(); closeSheet(); render(); toast('Salvato');
@@ -380,7 +454,7 @@ function itemSheet(it){
 }
 
 /* ---------- Spesa ---------- */
-function autoShop(){ return S.items.filter(it => isLow(it) || (+it.min > 0 && +it.qty <= 0)); }
+const autoShop = () => S.items.filter(isLow);
 function renderBadge(){
   const n = autoShop().length + S.shop.filter(s => !s.done).length;
   const b = $('#shopBadge'); b.hidden = !n; b.textContent = n;
@@ -389,15 +463,21 @@ function renderBadge(){
 function renderShop(){
   renderMotoFilter($('#motoF2'), renderShop);
   const auto = autoShop().filter(motoMatch), manual = S.shop;
-  { const n = auto.length + manual.filter(s => !s.done).length; $('#subtitle').textContent = n === 1 ? '1 cosa da prendere' : n + ' cose da prendere'; }
+  const n = auto.length + manual.filter(s => !s.done).length;
+  $('#subtitle').textContent = n === 1 ? '1 cosa da prendere' : n + ' cose da prendere';
   let html = '';
   if (auto.length){
     html += `<h2>Sotto scorta</h2>`;
     auto.forEach(it => {
-      html += `<div class="card" data-auto="${it.id}"><div class="row">
-        <div class="grow"><div class="name">Prendi ${fmt(it.buy || 1, it.unit)} · ${esc(it.name)}</div>
-        <div class="meta">Hai ${fmt(it.qty, it.unit)} · avviso sotto ${fmt(it.min, it.unit)}${it.moto ? ' · ' + esc(motoName(it.moto)) : ''}</div></div>
-        <button class="acc" data-bought>Comprato</button></div></div>`;
+      html += `<div class="card" data-auto="${it.id}">
+        <div class="name">${esc(it.name)}</div>
+        <div class="meta">Hai ${fmt(it.qty, it.unit)} · avviso sotto ${fmt(it.min, it.unit)}${compat(it) ? ' · ' + esc(compat(it)) : ''}</div>
+        <div class="buyrow">
+          <span>Presi</span>
+          <input type="number" inputmode="decimal" step="any" value="${it.buy || 1}" data-q>
+          <span>${it.unit === 'L' ? 'litri' : 'pezzi'}</span>
+          <button class="acc" data-bought>Comprato</button>
+        </div></div>`;
     });
   }
   html += `<h2>Lista</h2>`;
@@ -413,7 +493,11 @@ function renderShop(){
 
   $('#shop').querySelectorAll('[data-auto]').forEach(c => {
     const it = S.items.find(i => i.id === c.dataset.auto);
-    c.querySelector('[data-bought]').onclick = () => boughtSheet(it);
+    c.querySelector('[data-bought]').onclick = () => {
+      const q = parseFloat(String(c.querySelector('[data-q]').value).replace(',', '.')) || 0;
+      if (q <= 0){ c.querySelector('[data-q]').focus(); return; }
+      it.qty = r2(+it.qty + q); save(); renderShop(); toast(`+${fmt(q, it.unit)} in magazzino`);
+    };
   });
   $('#shop').querySelectorAll('[data-s]').forEach(c => {
     const s = S.shop.find(x => x.id === c.dataset.s);
@@ -421,17 +505,6 @@ function renderShop(){
     c.querySelector('[data-x]').onclick = () => { S.shop = S.shop.filter(x => x !== s); save(); renderShop(); };
   });
   const cd = $('#clearDone'); if (cd) cd.onclick = () => { S.shop = S.shop.filter(s => !s.done); save(); renderShop(); };
-}
-function boughtSheet(it){
-  const sug = +it.buy || 1;
-  openSheet(`<h3>${esc(it.name)}</h3><div class="meta">Quanto hai comprato?</div>
-    <label>Quantità (${it.unit === 'L' ? 'litri' : 'pezzi'})</label>
-    <input id="b-q" type="number" inputmode="decimal" step="any" value="${sug}">
-    <div class="actions"><button class="acc" id="b-ok">Aggiungi al magazzino</button></div>`);
-  $('#b-ok').onclick = () => {
-    const q = parseFloat(String($('#b-q').value).replace(',', '.')) || 0;
-    it.qty = Math.round((+it.qty + q) * 100) / 100; save(); closeSheet(); renderShop(); toast('Magazzino aggiornato');
-  };
 }
 function shopSheet(){
   openSheet(`<h3>Aggiungi alla lista</h3>
@@ -445,17 +518,76 @@ function shopSheet(){
   };
 }
 
+/* ---------- Parti vecchie (niente spesa) ---------- */
+function renderOld(){
+  const q = $('#qo').value.trim().toLowerCase();
+  const list = S.old.filter(p => !q || (p.name + ' ' + p.from + ' ' + p.loc + ' ' + p.note + ' ' + p.cond).toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  $('#subtitle').textContent = S.old.length === 1 ? '1 parte' : S.old.length + ' parti';
+  if (!list.length){ $('#old').innerHTML = `<div class="empty">${S.old.length ? 'Niente trovato.' : 'Qui metti i pezzi tolti dalla moto<br>o quelli che hai in giro.<br>Tocca + per aggiungere.'}</div>`; return; }
+  $('#old').innerHTML = list.map(p => `<div class="card" data-o="${p.id}"><div class="row">
+      <div class="grow"><div class="name">${esc(p.name)}${p.cond ? `<span class="cond">${esc(p.cond)}</span>` : ''}</div>
+      <div class="meta">${esc([p.from && 'da ' + p.from, p.loc && '📍 ' + p.loc, p.note].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
+      <div class="qty">${fmtN(p.qty)} <small>pz</small></div></div></div>`).join('');
+  $('#old').querySelectorAll('[data-o]').forEach(c => c.onclick = () => oldSheet(S.old.find(p => p.id === c.dataset.o)));
+}
+$('#qo').oninput = renderOld;
+function oldSheet(p){
+  const isNew = !p;
+  p = p || {id:uid(), name:'', qty:1, from:curMoto() ? motoName(curMoto()) : '', cond:'Usurato', loc:'', note:'', date:new Date().toISOString().slice(0,10)};
+  openSheet(`<h3>${isNew ? 'Nuova parte vecchia' : 'Modifica'}</h3>
+    <label>Cosa</label><input id="o-n" value="${esc(p.name)}" placeholder="es. Pistone vecchio, scarico originale">
+    <div class="grid2">
+      <div><label>Quantità</label><input id="o-q" type="number" inputmode="decimal" step="1" value="${p.qty}"></div>
+      <div><label>Stato</label><select id="o-c">${CONDS.map(c => `<option ${p.cond===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    </div>
+    <label>Da quale moto viene</label><input id="o-f" list="motonames" value="${esc(p.from)}" placeholder="Opzionale">
+    <datalist id="motonames">${S.motos.map(m => `<option>${esc(motoName(m))}</option>`).join('')}</datalist>
+    <div class="grid2">
+      <div><label>Dove si trova</label><input id="o-l" value="${esc(p.loc)}" placeholder="Scatola 3"></div>
+      <div><label>Tolto il</label><input id="o-d" type="date" value="${esc(p.date)}"></div>
+    </div>
+    <label>Note</label><input id="o-note" value="${esc(p.note)}" placeholder="es. Ha fatto 40 ore">
+    <div class="actions">${isNew ? '' : '<button class="danger" id="o-del">Elimina</button>'}<button class="acc" id="o-ok">Salva</button></div>`);
+  $('#o-ok').onclick = () => {
+    const n = $('#o-n').value.trim(); if (!n){ $('#o-n').focus(); return; }
+    Object.assign(p, {name:n, qty:Math.max(0, num('#o-q') ?? 1), cond:$('#o-c').value, from:$('#o-f').value.trim(), loc:$('#o-l').value.trim(), date:$('#o-d').value, note:$('#o-note').value.trim()});
+    if (isNew) S.old.push(p);
+    save(); closeSheet(); renderOld(); toast('Salvato');
+  };
+  if (!isNew) $('#o-del').onclick = () => {
+    if (!confirm(`Eliminare "${p.name}"?`)) return;
+    S.old = S.old.filter(x => x !== p); save(); closeSheet(); renderOld();
+  };
+}
+
 /* ---------- Moto ---------- */
+const dueIn = (m, t) => +t.every > 0 ? Math.round(((+t.lastH || 0) + +t.every - (+m.hours || 0)) * 10) / 10 : null;
+const dueCount = () => S.motos.reduce((n, m) => n + (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d <= 0; }).length, 0);
+const oilOptions = (m, sel) => `<option value="">Nessuno</option>` + S.items.filter(i => i.unit === 'L' && fits(i, m))
+  .map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${esc(o.name)} (hai ${fmt(o.qty, 'L')})</option>`).join('');
+const fmtD = d => { try { return new Date(d).toLocaleDateString('it-IT'); } catch(e){ return d; } };
+
+function logGroups(m){
+  const g = {};
+  m.log.forEach(l => { const k = l.what.trim().toLowerCase(); (g[k] ||= {name:l.what.trim(), list:[]}).list.push(l); });
+  return Object.values(g).map(x => { x.list.sort((a, b) => String(b.date).localeCompare(String(a.date))); return x; })
+    .sort((a, b) => String(b.list[0].date).localeCompare(String(a.list[0].date)));
+}
+
 function renderMoto(){
-  $('#subtitle').textContent = S.motos.length + ' moto' + (dueCount() ? ` · ${dueCount()} ${dueCount() === 1 ? 'lavoro scaduto' : 'lavori scaduti'}` : '');
+  const dc = dueCount();
+  $('#subtitle').textContent = S.motos.length + ' moto' + (dc ? ` · ${dc} ${dc === 1 ? 'lavoro scaduto' : 'lavori scaduti'}` : '');
   if (!S.motos.length){ $('#moto').innerHTML = `<div class="empty">Nessuna moto. Tocca "Aggiungi moto".</div>`; return; }
   $('#moto').innerHTML = S.motos.map(m => {
-    const items = S.items.filter(i => i.moto === m.id);
+    const nItems = S.items.filter(i => i.model && fits(i, m)).length;
     const maint = [...(m.maint || [])].sort((a, b) => (dueIn(m, a) ?? 1e9) - (dueIn(m, b) ?? 1e9));
+    const groups = logGroups(m);
     return `<div class="card" data-m="${m.id}">
-      <div class="row"><div class="grow"><div class="name" style="font-size:19px">${esc(m.name)}</div><div class="meta">${esc(m.note || '')}</div></div>
+      <div class="row"><div class="grow"><div class="name" style="font-size:19px">${esc([m.brand, m.model].filter(Boolean).join(' '))}</div>
+      <div class="meta">${esc([m.year, m.note].filter(Boolean).join(' · '))}</div></div>
       <div class="qty">${(+m.hours || 0).toLocaleString('it-IT')} <small>ore</small></div></div>
-      <div class="steps"><button data-h>Aggiorna ore</button><button data-v class="acc">Pezzi e oli (${items.length})</button></div>
+      <div class="steps"><button data-h>Aggiorna ore</button><button data-v class="acc">Pezzi e oli (${nItems})</button></div>
 
       <h2 style="margin-top:20px">Manutenzione</h2>
       ${maint.length ? maint.map(t => {
@@ -469,13 +601,16 @@ function renderMoto(){
       }).join('') : '<div class="meta">Nessuna voce. Aggiungi la tua tabella di manutenzione.</div>'}
       <button class="ghost" data-ta style="margin-top:6px">+ Aggiungi voce di manutenzione</button>
 
+      <h2 style="margin-top:20px">Storico lavori</h2>
+      ${groups.length ? groups.map(g => `<details class="grp">
+        <summary><b>${esc(g.name)}</b><span>${g.list.length}× · ultimo ${fmtD(g.list[0].date)}${g.list[0].hours !== '' && g.list[0].hours != null ? ' a ' + fmtH(+g.list[0].hours) : ''}</span></summary>
+        ${g.list.map(l => `<div class="lg" data-li="${l.id}"><span>${fmtD(l.date)}</span><span>${l.hours !== '' && l.hours != null ? fmtH(+l.hours) : ''} ✕</span></div>`).join('')}
+      </details>`).join('') : '<div class="meta">Ancora nessun lavoro registrato.</div>'}
+      <button class="ghost" data-l style="margin-top:6px">+ Registra un altro lavoro</button>
+
       <h2 style="margin-top:20px">Oli e specifiche</h2>
       ${m.specs.length ? m.specs.map(s => `<div class="spec"><span>${esc(s[0])}</span><span>${esc(s[1])}</span></div>`).join('') : '<div class="meta">Nessuna specifica.</div>'}
       <button class="ghost" data-e style="margin-top:6px">Modifica moto e specifiche</button>
-
-      <h2 style="margin-top:20px">Ultimi lavori</h2>
-      ${m.log.length ? m.log.slice(0, 8).map((l, i) => `<div class="spec" data-li="${i}"><span>${esc(new Date(l.date).toLocaleDateString('it-IT'))}${l.hours !== '' && l.hours != null ? ' · ' + esc(l.hours) + ' h' : ''}</span><span>${esc(l.what)}</span></div>`).join('') : '<div class="meta">Ancora nessun lavoro registrato.</div>'}
-      <button class="ghost" data-l style="margin-top:6px">+ Registra un altro lavoro</button>
     </div>`;
   }).join('');
   $('#moto').querySelectorAll('[data-m]').forEach(c => {
@@ -491,23 +626,16 @@ function renderMoto(){
       r.querySelector('[data-td]').onclick = () => doneSheet(m, t);
     });
     c.querySelectorAll('[data-li]').forEach(r => r.onclick = () => {
-      if (confirm('Eliminare questo lavoro dal registro?')){ m.log.splice(+r.dataset.li, 1); save(); renderMoto(); }
+      if (confirm('Eliminare questo lavoro dallo storico?')){ m.log = m.log.filter(l => l.id !== r.dataset.li); save(); renderMoto(); }
     });
   });
 }
-const fmtH = h => (Math.round(h * 10) / 10).toLocaleString('it-IT') + ' h';
-const num = sel => { const v = parseFloat(String($(sel).value).replace(',', '.')); return isNaN(v) ? null : v; };
-const oilOptions = (m, sel) => `<option value="">Nessuno</option>` + S.items.filter(i => i.unit === 'L' && (!i.moto || i.moto === m.id))
-  .map(o => `<option value="${o.id}" ${o.id === sel ? 'selected' : ''}>${esc(o.name)} (hai ${fmt(o.qty, 'L')})</option>`).join('');
-
 function hoursSheet(m){
-  openSheet(`<h3>Ore motore</h3><label>${esc(m.name)}</label>
+  openSheet(`<h3>Ore motore</h3><label>${esc(motoName(m))}</label>
     <input id="h-v" type="number" inputmode="decimal" step="0.1" value="${m.hours || 0}">
     <div class="actions"><button class="acc" id="h-ok">Salva</button></div>`);
   $('#h-ok').onclick = () => { m.hours = num('#h-v') ?? 0; save(); closeSheet(); renderMoto(); };
 }
-
-/* Voce della tabella di manutenzione: la decidi tu */
 function taskSheet(m, t){
   const isNew = !t;
   t = t || {id:uid(), what:'', every:0, lastH:+m.hours || 0, oil:'', liters:0};
@@ -533,8 +661,13 @@ function taskSheet(m, t){
     m.maint = m.maint.filter(x => x !== t); save(); closeSheet(); renderMoto();
   };
 }
+function useOil(sel, qsel){
+  const o = S.items.find(i => i.id === $(sel).value), q = num(qsel);
+  if (o && q > 0){ o.qty = Math.max(0, r2(o.qty - q)); return `scalati ${fmt(q, 'L')}`; }
+  return '';
+}
 function doneSheet(m, t){
-  openSheet(`<h3>${esc(t.what)}</h3><div class="meta">${esc(m.name)}</div>
+  openSheet(`<h3>${esc(t.what)}</h3><div class="meta">${esc(motoName(m))}</div>
     <div class="grid2">
       <div><label>Data</label><input id="d-d" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div><label>Ore motore</label><input id="d-h" type="number" inputmode="decimal" step="0.1" value="${m.hours || 0}"></div>
@@ -545,15 +678,17 @@ function doneSheet(m, t){
   $('#d-ok').onclick = () => {
     const h = num('#d-h') ?? (+m.hours || 0);
     t.lastH = h; if (h > (+m.hours || 0)) m.hours = h;
-    m.log.unshift({date:$('#d-d').value || new Date().toISOString(), hours:h, what:t.what});
-    const o = S.items.find(i => i.id === $('#d-o').value), q = num('#d-q');
-    if (o && q > 0) o.qty = Math.max(0, Math.round((o.qty - q) * 100) / 100);
-    save(); closeSheet(); renderMoto(); toast(o && q > 0 ? `Fatto · scalati ${fmt(q, 'L')}` : 'Fatto');
+    m.log.unshift({id:uid(), date:$('#d-d').value || new Date().toISOString().slice(0,10), hours:h, what:t.what});
+    const msg = useOil('#d-o', '#d-q');
+    save(); closeSheet(); renderMoto(); toast('Fatto' + (msg ? ' · ' + msg : ''));
   };
 }
 function logSheet(m){
+  const names = [...new Set([...(m.maint || []).map(t => t.what), ...m.log.map(l => l.what)])];
   openSheet(`<h3>Registra lavoro</h3>
-    <label>Cosa hai fatto</label><input id="l-w" placeholder="es. Cambio leve">
+    <label>Cosa hai fatto</label><input id="l-w" list="l-sug" placeholder="es. Cambio leve">
+    <datalist id="l-sug">${names.map(n => `<option>${esc(n)}</option>`).join('')}</datalist>
+    <div class="note" style="margin-top:6px">Usa lo stesso nome per raggrupparlo con i lavori uguali.</div>
     <div class="grid2">
       <div><label>Data</label><input id="l-d" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
       <div><label>Ore motore</label><input id="l-h" type="number" inputmode="decimal" step="0.1" value="${m.hours || ''}"></div>
@@ -562,37 +697,43 @@ function logSheet(m){
     <label>Litri usati</label><input id="l-q" type="number" inputmode="decimal" step="0.05" placeholder="es. 0,25">
     <div class="actions"><button class="acc" id="l-ok">Salva</button></div>`);
   $('#l-ok').onclick = () => {
-    const what = $('#l-w').value.trim(); if (!what) return;
+    const what = $('#l-w').value.trim(); if (!what){ $('#l-w').focus(); return; }
     const h = num('#l-h');
-    m.log.unshift({date:$('#l-d').value || new Date().toISOString(), hours:h ?? '', what});
+    m.log.unshift({id:uid(), date:$('#l-d').value || new Date().toISOString().slice(0,10), hours:h ?? '', what});
     if (h !== null && h > (m.hours || 0)) m.hours = h;
-    const o = S.items.find(i => i.id === $('#l-o').value), q = num('#l-q');
-    if (o && q > 0) o.qty = Math.max(0, Math.round((o.qty - q) * 100) / 100);
-    save(); closeSheet(); renderMoto(); toast(o && q > 0 ? `Scalati ${fmt(q, 'L')} di ${o.name}` : 'Registrato');
+    const t = (m.maint || []).find(x => x.what.trim().toLowerCase() === what.toLowerCase());
+    if (t && h !== null) t.lastH = h;
+    const msg = useOil('#l-o', '#l-q');
+    save(); closeSheet(); renderMoto(); toast('Registrato' + (msg ? ' · ' + msg : ''));
   };
 }
 function motoSheet(m){
   const isNew = !m;
-  m = m || {id:uid(), name:'', note:'', hours:0, specs:[], log:[], maint:[]};
+  m = m || {id:uid(), brand:'', model:'', year:'', note:'', hours:0, specs:[], log:[], maint:[]};
   openSheet(`<h3>${isNew ? 'Nuova moto' : 'Modifica moto'}</h3>
-    <label>Marca, modello e anno</label><input id="m-n" value="${esc(m.name)}" placeholder="es. Husqvarna TE 300 (2022)">
+    <div class="grid3">
+      <div><label>Marca</label><input id="m-b" value="${esc(m.brand)}" placeholder="KTM"></div>
+      <div><label>Modello</label><input id="m-m" value="${esc(m.model)}" placeholder="SX 125"></div>
+      <div><label>Anno</label><input id="m-y" type="number" inputmode="numeric" value="${esc(m.year)}" placeholder="2025"></div>
+    </div>
     <div class="grid2">
-      <div><label>Note</label><input id="m-note" value="${esc(m.note)}" placeholder="es. Enduro"></div>
+      <div><label>Note</label><input id="m-note" value="${esc(m.note)}" placeholder="es. Supermoto"></div>
       <div><label>Ore motore</label><input id="m-h" type="number" inputmode="decimal" step="0.1" value="${m.hours || 0}"></div>
     </div>
     <label>Oli e specifiche (una per riga: voce = valore)</label>
     <textarea id="m-s" rows="7" placeholder="Olio cambio = 0,8 L 15W-50&#10;Miscela = 1:40&#10;Freni = DOT 4">${esc(m.specs.map(s => s[0] + ' = ' + s[1]).join('\n'))}</textarea>
     <div class="actions">${isNew ? '' : '<button class="danger" id="m-del">Elimina</button>'}<button class="acc" id="m-ok">Salva</button></div>`);
   $('#m-ok').onclick = () => {
-    const n = $('#m-n').value.trim(); if (!n){ $('#m-n').focus(); return; }
-    m.name = n; m.note = $('#m-note').value.trim(); m.hours = num('#m-h') ?? 0;
+    const b = $('#m-b').value.trim(), mo = $('#m-m').value.trim();
+    if (!b && !mo){ $('#m-b').focus(); return; }
+    Object.assign(m, {brand:b, model:mo, year:$('#m-y').value.trim(), note:$('#m-note').value.trim(), hours:num('#m-h') ?? 0});
     m.specs = $('#m-s').value.split('\n').map(l => l.split('=')).filter(p => p[0].trim()).map(p => [p[0].trim(), p.slice(1).join('=').trim()]);
     if (isNew) S.motos.push(m);
     save(); closeSheet(); renderMoto(); toast(isNew ? 'Moto aggiunta' : 'Salvato');
   };
   if (!isNew) $('#m-del').onclick = () => {
-    if (!confirm(`Eliminare ${m.name}? Gli articoli restano in magazzino.`)) return;
-    S.motos = S.motos.filter(x => x !== m); S.items.forEach(i => { if (i.moto === m.id) i.moto = ''; });
+    if (!confirm(`Eliminare ${motoName(m)}? I ricambi restano in magazzino.`)) return;
+    S.motos = S.motos.filter(x => x !== m);
     if (S.mf === m.id) S.mf = 'tutte';
     save(); closeSheet(); renderMoto();
   };
@@ -600,29 +741,33 @@ function motoSheet(m){
 $('#addMoto').onclick = () => motoSheet();
 
 /* ---------- Miscela ---------- */
-function mixOil(){ return S.items.find(i => i.use === 'mix') || S.items.find(i => /2t|miscela/i.test(i.name)); }
+const mixOil = () => S.items.find(i => i.use === 'mix') || S.items.find(i => /2t|miscela/i.test(i.name));
 function renderMix(){
   $('#subtitle').textContent = 'Calcolo olio per la benzina';
-  $('#mixQuick').innerHTML = [1, 2, 3, 5, 7.5, 10].map(l => `<button class="chip" data-l="${l}">${l.toLocaleString('it-IT')} L</button>`).join('');
-  $('#mixQuick').querySelectorAll('.chip').forEach(b => b.onclick = () => { $('#mixL').value = b.dataset.l; calcMix(); });
+  $('#mixL').value = S.mixL ? r2(S.mixL) : '';
+  $('#mixAdd').innerHTML = [0.1, 0.5, 1, 2, 5, 10].map(l => `<button data-a="${l}">+ ${fmtN(l)} L</button>`).join('');
+  $('#mixAdd').querySelectorAll('button').forEach(b => b.onclick = () => { S.mixL = r2((+S.mixL || 0) + +b.dataset.a); save(); $('#mixL').value = r2(S.mixL); calcMix(); });
   $('#mixRatio').innerHTML = [32, 40, 50, 60].map(r => `<button class="chip ${S.mixRatio==r?'on':''}" data-r="${r}">1:${r}</button>`).join('');
   $('#mixRatio').querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mixRatio = +b.dataset.r; save(); renderMix(); });
-  $('#lastBackup').textContent = S.lastBackup ? 'Ultimo backup: ' + new Date(S.lastBackup).toLocaleDateString('it-IT') : 'Nessun backup ancora.';
+  $('#lastBackup').textContent = S.lastBackup ? 'Ultimo backup: ' + fmtD(S.lastBackup) : 'Nessun backup ancora.';
   calcMix();
 }
 function calcMix(){
-  const L = parseFloat(String($('#mixL').value).replace(',', '.')) || 0;
+  const L = +S.mixL || 0;
   const ml = Math.round(L * 1000 / S.mixRatio);
   $('#mixOut').textContent = ml + ' ml';
   const o = mixOil();
   $('#mixNote').textContent = o ? `Hai ${fmt(o.qty, 'L')} di ${o.name}.` : 'Aggiungi un olio 2T in magazzino per scalarlo in automatico.';
   return ml;
 }
-$('#mixL').oninput = calcMix;
+$('#mixL').oninput = () => { S.mixL = Math.max(0, num('#mixL') ?? 0); save(); calcMix(); };
+$('#mixZero').onclick = () => { S.mixL = 0; save(); $('#mixL').value = ''; calcMix(); };
 $('#mixUse').onclick = () => {
   const ml = calcMix(), o = mixOil();
+  if (!ml){ toast('Prima metti i litri di benzina'); return; }
   if (!o){ toast('Nessun olio 2T in magazzino'); return; }
-  o.qty = Math.max(0, Math.round((o.qty - ml / 1000) * 1000) / 1000); save(); calcMix();
+  o.qty = Math.max(0, Math.round((o.qty - ml / 1000) * 1000) / 1000);
+  S.mixL = 0; save(); $('#mixL').value = ''; calcMix();
   toast(`Scalati ${ml} ml di olio 2T`);
 };
 
@@ -645,20 +790,20 @@ $('#impFile').onchange = async e => {
     const d = JSON.parse(await f.text());
     if (!d.items || !d.motos) throw 0;
     if (!confirm('Sostituire tutti i dati attuali con quelli del backup?')) return;
-    S = d; save(); render(); toast('Backup importato');
+    S = d; migrate(); save(); render(); toast('Backup importato');
   } catch(err){ toast('File non valido'); }
   e.target.value = '';
 };
 
 /* ---------- Sheet ---------- */
-function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').classList.add('on'); $('#sheetBg').classList.add('on'); }
+function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').scrollTop = 0; $('#sheet').classList.add('on'); $('#sheetBg').classList.add('on'); }
 function closeSheet(){ $('#sheet').classList.remove('on'); $('#sheetBg').classList.remove('on'); document.activeElement && document.activeElement.blur(); }
 $('#sheetBg').onclick = closeSheet;
 
-$('#fab').onclick = () => ({stock:() => itemSheet(), shop:shopSheet, moto:() => motoSheet()})[view]?.();
+$('#fab').onclick = () => ({stock:() => itemSheet(), shop:shopSheet, old:() => oldSheet()})[view]?.();
 
 /* ---------- Render ---------- */
-function render(){ ({stock:renderStock, shop:renderShop, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
+function render(){ ({stock:renderStock, shop:renderShop, old:renderOld, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
 function net(){ const on = navigator.onLine; $('#dot').style.background = on ? 'var(--ok)' : 'var(--warn)'; $('#net').textContent = on ? 'online' : 'offline'; }
 addEventListener('online', net); addEventListener('offline', net); net();
 save(); render();
