@@ -99,6 +99,15 @@ details.grp[open] summary::after{transform:rotate(90deg)}
 .mixadd{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .mixadd button{padding:12px 4px}
 .cond{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);margin-left:6px;vertical-align:2px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;background:var(--card);border-radius:var(--r);padding:14px;min-height:108px}
+.tile .ti{font-size:26px;line-height:1}
+.tile b{font-size:16px;margin-top:6px;line-height:1.2}
+.tile .tc{font-size:12px;color:var(--muted);font-weight:500}
+.tile .tc em{color:var(--warn);font-style:normal;font-weight:600}
+.tile.empty{opacity:.5}
+.back{background:none;color:var(--acc);padding:10px 0 2px}
+.gtitle{font-size:22px;font-weight:700;margin:4px 0 12px}
 .offline{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
 </style>
@@ -113,7 +122,6 @@ details.grp[open] summary::after{transform:rotate(90deg)}
   <!-- MAGAZZINO -->
   <section class="view on" id="v-stock">
     <input class="search" id="q" placeholder="Cerca pezzo, codice, scaffale…" autocomplete="off">
-    <div class="chips motochips" id="motoF"></div>
     <div class="chips" id="cats"></div>
     <div id="stock"></div>
   </section>
@@ -272,7 +280,8 @@ function load(){
 /* Converte i dati delle versioni precedenti senza perdere niente */
 function migrate(){
   S.shop ||= []; S.motos ||= []; S.items ||= []; S.old ||= []; S.orders ||= [];
-  S.smode ||= 'cat'; S.omode ||= 'cat';
+  if (!['cat','moto'].includes(S.smode)) S.smode = 'cat';
+  if (!['cat','moto'].includes(S.omode)) S.omode = 'cat';
   if (S.mixL == null) S.mixL = 0;
   S.motos.forEach(m => {
     if (m.model == null){
@@ -358,6 +367,8 @@ let view = 'stock';
 const titles = {stock:'Magazzino', shop:'Da comprare', old:'Parti vecchie', moto:'Le mie moto', mix:'Miscela'};
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.v));
 function go(v){
+  if (v === view && v === 'stock'){ S.ssel = null; lowOnly = false; $('#q').value = ''; }
+  if (v === view && v === 'old'){ S.osel = null; $('#qo').value = ''; }
   view = v;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
@@ -369,24 +380,35 @@ function go(v){
 
 /* ---------- Magazzino ---------- */
 let lowOnly = false;
-/* Come dividere: tutti insieme, per categoria o per moto */
-function modeChips(el, key, after, extraLow){
-  const modes = [{id:'all', label:'Tutti insieme'}, {id:'cat', label:'Per categoria'}, {id:'moto', label:'Per moto'}];
-  el.innerHTML = modes.map(m => `<button class="chip ${S[key]===m.id?'on':''}" data-md="${m.id}">${m.label}</button>`).join('')
-    + (extraLow ? `<button class="chip ${lowOnly?'on':''}" data-low>In esaurimento</button>` : '');
-  el.querySelectorAll('[data-md]').forEach(b => b.onclick = () => { S[key] = b.dataset.md; save(); after(); });
-  const l = el.querySelector('[data-low]'); if (l) l.onclick = () => { lowOnly = !lowOnly; after(); };
+const ICON = {olio:'🛢️', motore:'⚙️', guarnizioni:'⭕', candele:'⚡', freni:'🛑', trasmissione:'⛓️', plastiche:'🧩', accessori:'🎒', scarichi:'💨', altro:'📦'};
+/* Scelta: per categoria o per moto */
+function modeChips(el, key, selKey, after, withLow){
+  const modes = [{id:'cat', label:'Per categoria'}, {id:'moto', label:'Per moto'}];
+  el.innerHTML = modes.map(m => `<button class="chip ${S[key]===m.id && !(withLow && lowOnly)?'on':''}" data-md="${m.id}">${m.label}</button>`).join('')
+    + (withLow ? `<button class="chip ${lowOnly?'on':''}" data-low>In esaurimento</button>` : '');
+  el.querySelectorAll('[data-md]').forEach(b => b.onclick = () => { S[key] = b.dataset.md; S[selKey] = null; lowOnly = false; save(); after(); });
+  const l = el.querySelector('[data-low]'); if (l) l.onclick = () => { lowOnly = !lowOnly; S[selKey] = null; after(); };
 }
-/* Raggruppa una lista: restituisce [{title, list}] */
-function groupBy(list, mode, catsList, motoOf){
-  const byName = (a, b) => a.name.localeCompare(b.name);
-  if (mode === 'all') return list.length ? [{title:'', list:[...list].sort(byName)}] : [];
-  if (mode === 'cat') return catsList.map(c => ({title:c.label, list:list.filter(x => x.cat === c.id).sort(byName)})).filter(g => g.list.length);
-  const motos = S.mf === 'tutte' ? S.motos : S.motos.filter(m => m.id === S.mf);
-  const groups = motos.map(m => ({title:motoName(m), list:list.filter(x => motoOf(x, m)).sort(byName)}));
-  const used = new Set(groups.flatMap(g => g.list));
-  groups.push({title:'Per tutte le moto / altro', list:list.filter(x => !used.has(x)).sort(byName)});
-  return groups.filter(g => g.list.length);
+/* Menu a blocchi */
+function tiles(groups){
+  return `<div class="tiles">${groups.map(g => {
+    const low = g.list.filter(x => x.min != null && isLow(x) && !isOrdered(x)).length;
+    return `<button class="tile ${g.list.length ? '' : 'empty'}" data-g="${g.id}">
+      <span class="ti">${g.icon}</span><b>${esc(g.label)}</b>
+      <span class="tc">${g.list.length} ${g.list.length === 1 ? 'pezzo' : 'pezzi'}${low ? ` · <em>${low} da ricomprare</em>` : ''}</span>
+    </button>`;
+  }).join('')}</div>`;
+}
+const byName = (a, b) => a.name.localeCompare(b.name);
+function stockGroups(){
+  const oils = S.items.filter(i => i.cat === 'olio');
+  if (S.smode === 'cat') return CATS.map(c => ({id:c.id, label:c.label, icon:ICON[c.id], list:S.items.filter(i => i.cat === c.id)}));
+  const parts = S.items.filter(i => i.cat !== 'olio');
+  const g = S.motos.map(m => ({id:m.id, label:motoName(m), icon:'🏍️', moto:m, list:parts.filter(i => i.model && fits(i, m))}));
+  const used = new Set(g.flatMap(x => x.list));
+  g.push({id:'_gen', label:'Per tutte le moto / altro', icon:'📦', list:parts.filter(i => !used.has(i))});
+  g.push({id:'_oil', label:'Olio e liquidi', icon:ICON.olio, list:oils});
+  return g;
 }
 function itemCard(it){
   const cls = +it.qty <= 0 ? 'zero' : isLow(it) ? 'low' : '';
@@ -407,25 +429,33 @@ function itemCard(it){
   </div>`;
 }
 function renderStock(){
-  modeChips($('#cats'), 'smode', renderStock, true);
-  renderMotoFilter($('#motoF'), renderStock);
+  modeChips($('#cats'), 'smode', 'ssel', renderStock, true);
   const q = $('#q').value.trim().toLowerCase();
-  const list = S.items.filter(it => {
-    if (!motoMatch(it)) return false;
-    if (lowOnly && !isLow(it)) return false;
-    if (q && !(it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note + ' ' + it.model + ' ' + catLabel(it.cat)).toLowerCase().includes(q)) return false;
-    return true;
-  });
   const low = S.items.filter(isLow).length;
   $('#subtitle').textContent = `${S.items.length} articoli` + (low ? ` · ${low} da ricomprare` : '');
-  if (!list.length){ $('#stock').innerHTML = `<div class="empty">Niente qui.<br>Tocca + per aggiungere.</div>`; return; }
-  const oils = list.filter(it => it.cat === 'olio').sort((a, b) => a.name.localeCompare(b.name));
-  const parts = list.filter(it => it.cat !== 'olio');
-  let html = oils.length ? `<h2>Olio e liquidi · per tutte le moto</h2>` + oils.map(itemCard).join('') : '';
-  groupBy(parts, S.smode, PCATS, (it, m) => it.model && fits(it, m)).forEach(g => {
-    html += `<h2>${esc(g.title || 'Ricambi')}</h2>` + g.list.map(itemCard).join('');
-  });
+  let html = '';
+  if (q || lowOnly){
+    // ricerca o "in esaurimento": lista unica
+    const list = S.items.filter(it => (!lowOnly || isLow(it)) &&
+      (!q || (it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note + ' ' + it.model + ' ' + catLabel(it.cat)).toLowerCase().includes(q))).sort(byName);
+    html = list.length ? `<h2>${lowOnly ? 'In esaurimento' : 'Risultati'} (${list.length})</h2>` + list.map(itemCard).join('') : `<div class="empty">Niente trovato.</div>`;
+  } else {
+    const groups = stockGroups();
+    const g = groups.find(x => x.id === S.ssel);
+    if (!g){ S.ssel = null; html = tiles(groups); }
+    else {
+      html = `<button class="back" data-back>‹ ${S.smode === 'cat' ? 'Tutte le categorie' : 'Tutte le moto'}</button>
+        <div class="gtitle">${g.icon} ${esc(g.label)}</div>`;
+      html += g.list.length ? g.list.sort(byName).map(itemCard).join('') : `<div class="empty">Ancora niente qui.<br>Tocca + per aggiungere.</div>`;
+      if (g.moto){
+        const oils = S.items.filter(i => i.cat === 'olio').sort(byName);
+        if (oils.length) html += `<h2>Olio e liquidi · universali</h2>` + oils.map(itemCard).join('');
+      }
+    }
+  }
   $('#stock').innerHTML = html;
+  $('#stock').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { S.ssel = b.dataset.g; save(); renderStock(); window.scrollTo(0, 0); });
+  const bk = $('#stock [data-back]'); if (bk) bk.onclick = () => { S.ssel = null; save(); renderStock(); };
   $('#stock').querySelectorAll('.card').forEach(card => {
     const it = S.items.find(i => i.id === card.dataset.id);
     card.querySelector('[data-open]').onclick = () => itemSheet(it);
@@ -433,6 +463,14 @@ function renderStock(){
   });
 }
 $('#q').oninput = renderStock;
+/* Un pezzo nuovo prende categoria o moto del blocco aperto */
+function stockPreset(){
+  if (!S.ssel || S.ssel === '_gen') return {};
+  if (S.smode === 'cat') return {cat:S.ssel, unit:S.ssel === 'olio' ? 'L' : 'pz'};
+  if (S.ssel === '_oil') return {cat:'olio', unit:'L'};
+  const m = S.motos.find(x => x.id === S.ssel);
+  return m ? {model:m.model, yFrom:m.year, yTo:m.year} : {};
+}
 
 function adjust(it, d){
   const before = isLow(it);
@@ -444,7 +482,7 @@ function adjust(it, d){
 function itemSheet(it, preset){
   const isNew = !it;
   const cm = curMoto();
-  it = it || {id:uid(), name:'', cat:'motore', unit:'pz', qty:1, min:0, buy:1, barMax:0, model:cm ? cm.model : '', yFrom:cm ? cm.year : '', yTo:cm ? cm.year : '', loc:'', code:'', note:'', ...(preset || {})};
+  it = it || {id:uid(), name:'', cat:'motore', unit:'pz', qty:1, min:0, buy:1, barMax:0, model:'', yFrom:'', yTo:'', loc:'', code:'', note:'', ...(preset || {})};
   openSheet(`
     <h3>${isNew ? 'Nuovo articolo' : 'Modifica'}</h3>
     <label>Nome</label><input id="f-name" value="${esc(it.name)}" placeholder="es. Pastiglie freno anteriori">
@@ -520,8 +558,18 @@ function renderShop(){
   const n = auto.length + manual.filter(s => !s.done).length;
   $('#subtitle').textContent = (n === 1 ? '1 cosa da prendere' : n + ' cose da prendere') + (S.orders.length ? ` · ${S.orders.length} in arrivo` : '');
   let html = '';
+  if (S.orders.length) html += `<h2>🚚 Ordinati · in arrivo</h2>`;
+  [...S.orders].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(o => {
+    const it = S.items.find(i => i.id === o.itemId);
+    const days = Math.max(0, Math.round((Date.now() - new Date(o.date)) / 864e5));
+    html += `<div class="card" data-o="${o.id}"><div class="row">
+      <div class="grow"><div class="name">${esc(it ? it.name : o.name)}</div>
+      <div class="meta">${o.qty ? esc(it ? fmt(o.qty, it.unit) : o.qty) + ' · ' : ''}ordinato il ${fmtD(o.date)}${days ? ` (${days} gg fa)` : ''}</div></div>
+      <button class="danger" data-x aria-label="Annulla">✕</button>
+      <button class="acc" data-arr>Arrivato</button></div></div>`;
+  });
   if (auto.length){
-    html += `<h2>Sotto scorta</h2>`;
+    html += `<h2>Da comprare · sotto scorta</h2>`;
     auto.forEach(it => {
       html += `<div class="card" data-auto="${it.id}">
         <div class="name">${esc(it.name)}</div>
@@ -546,17 +594,6 @@ function renderShop(){
   });
   if (manual.some(s => s.done)) html += `<button class="ghost" id="clearDone">Togli quelli spuntati</button>`;
 
-  html += `<h2>Ordinati · in arrivo</h2>`;
-  if (!S.orders.length) html += `<div class="meta" style="padding:0 4px 10px">Niente in arrivo.</div>`;
-  [...S.orders].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(o => {
-    const it = S.items.find(i => i.id === o.itemId);
-    const days = Math.max(0, Math.round((Date.now() - new Date(o.date)) / 864e5));
-    html += `<div class="card" data-o="${o.id}"><div class="row">
-      <div class="grow"><div class="name">${esc(it ? it.name : o.name)}</div>
-      <div class="meta">${o.qty ? esc(it ? fmt(o.qty, it.unit) : o.qty) + ' · ' : ''}ordinato il ${fmtD(o.date)}${days ? ` (${days} gg fa)` : ''}</div></div>
-      <button class="danger" data-x aria-label="Annulla">✕</button>
-      <button class="acc" data-arr>Arrivato</button></div></div>`;
-  });
   $('#shop').innerHTML = html;
 
   $('#shop').querySelectorAll('[data-auto]').forEach(c => {
@@ -611,25 +648,37 @@ function shopSheet(){
 
 /* ---------- Parti vecchie (niente spesa) ---------- */
 function renderOld(){
-  modeChips($('#oldModes'), 'omode', renderOld, false);
+  modeChips($('#oldModes'), 'omode', 'osel', renderOld, false);
   const q = $('#qo').value.trim().toLowerCase();
   const mName = p => { const m = S.motos.find(x => x.id === p.motoId); return m ? motoName(m) : p.from || ''; };
-  const list = S.old.filter(p => !q || (p.name + ' ' + mName(p) + ' ' + p.loc + ' ' + p.note + ' ' + p.cond + ' ' + catLabel(p.cat)).toLowerCase().includes(q));
   $('#subtitle').textContent = S.old.length === 1 ? '1 parte' : S.old.length + ' parti';
-  if (!list.length){ $('#old').innerHTML = `<div class="empty">${S.old.length ? 'Niente trovato.' : 'Qui metti i pezzi tolti dalla moto<br>o quelli che hai in giro.<br>Tocca + per aggiungere.'}</div>`; return; }
-  const saveMf = S.mf; S.mf = 'tutte';
-  const groups = groupBy(list, S.omode, PCATS, (p, m) => p.motoId === m.id);
-  S.mf = saveMf;
-  $('#old').innerHTML = groups.map(g => (g.title ? `<h2>${esc(g.title)}</h2>` : '') + g.list.map(p => `<div class="card" data-o="${p.id}"><div class="row">
+  const card = p => `<div class="card" data-o="${p.id}"><div class="row">
       <div class="grow"><div class="name">${esc(p.name)}${p.cond ? `<span class="cond">${esc(p.cond)}</span>` : ''}</div>
       <div class="meta">${esc([S.omode !== 'cat' && catLabel(p.cat), S.omode !== 'moto' && mName(p) && 'da ' + mName(p), p.loc && '📍 ' + p.loc, p.note].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
-      <div class="qty">${fmtN(p.qty)} <small>pz</small></div></div></div>`).join('')).join('');
+      <div class="qty">${fmtN(p.qty)} <small>pz</small></div></div></div>`;
+  let html;
+  if (q){
+    const list = S.old.filter(p => (p.name + ' ' + mName(p) + ' ' + p.loc + ' ' + p.note + ' ' + p.cond + ' ' + catLabel(p.cat)).toLowerCase().includes(q)).sort(byName);
+    html = list.length ? `<h2>Risultati (${list.length})</h2>` + list.map(card).join('') : `<div class="empty">Niente trovato.</div>`;
+  } else {
+    const groups = S.omode === 'cat'
+      ? PCATS.map(c => ({id:c.id, label:c.label, icon:ICON[c.id], list:S.old.filter(p => p.cat === c.id)}))
+      : [...S.motos.map(m => ({id:m.id, label:motoName(m), icon:'🏍️', list:S.old.filter(p => p.motoId === m.id)})),
+         {id:'_none', label:'Nessuna / altra moto', icon:'📦', list:S.old.filter(p => !S.motos.some(m => m.id === p.motoId))}];
+    const g = groups.find(x => x.id === S.osel);
+    if (!g){ S.osel = null; html = tiles(groups); }
+    else html = `<button class="back" data-back>‹ ${S.omode === 'cat' ? 'Tutte le categorie' : 'Tutte le moto'}</button>
+        <div class="gtitle">${g.icon} ${esc(g.label)}</div>` + (g.list.length ? g.list.sort(byName).map(card).join('') : `<div class="empty">Ancora niente qui.<br>Tocca + per aggiungere.</div>`);
+  }
+  $('#old').innerHTML = html;
+  $('#old').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { S.osel = b.dataset.g; save(); renderOld(); window.scrollTo(0, 0); });
+  const bk = $('#old [data-back]'); if (bk) bk.onclick = () => { S.osel = null; save(); renderOld(); };
   $('#old').querySelectorAll('[data-o]').forEach(c => c.onclick = () => oldSheet(S.old.find(p => p.id === c.dataset.o)));
 }
 $('#qo').oninput = renderOld;
-function oldSheet(p){
+function oldSheet(p, preset){
   const isNew = !p;
-  p = p || {id:uid(), name:'', qty:1, cat:'motore', motoId:curMoto() ? curMoto().id : '', from:'', cond:'Usurato', loc:'', note:'', date:new Date().toISOString().slice(0,10)};
+  p = p || {id:uid(), name:'', qty:1, cat:'motore', motoId:curMoto() ? curMoto().id : '', from:'', cond:'Usurato', loc:'', note:'', date:new Date().toISOString().slice(0,10), ...(preset || {})};
   openSheet(`<h3>${isNew ? 'Nuova parte vecchia' : 'Modifica'}</h3>
     <label>Cosa</label><input id="o-n" value="${esc(p.name)}" placeholder="es. Pistone vecchio, scarico originale">
     <div class="grid2">
@@ -714,7 +763,7 @@ function renderMoto(){
   $('#moto').querySelectorAll('[data-m]').forEach(c => {
     const m = S.motos.find(x => x.id === c.dataset.m);
     c.querySelector('[data-h]').onclick = () => hoursSheet(m);
-    c.querySelector('[data-v]').onclick = () => { S.mf = m.id; lowOnly = false; save(); go('stock'); };
+    c.querySelector('[data-v]').onclick = () => { S.smode = 'moto'; S.ssel = m.id; lowOnly = false; $('#q').value = ''; save(); go('stock'); };
     c.querySelector('[data-l]').onclick = () => logSheet(m);
     c.querySelector('[data-e]').onclick = () => motoSheet(m);
     c.querySelector('[data-ta]').onclick = () => taskSheet(m);
@@ -898,7 +947,8 @@ function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').scrollTo
 function closeSheet(){ $('#sheet').classList.remove('on'); $('#sheetBg').classList.remove('on'); document.activeElement && document.activeElement.blur(); }
 $('#sheetBg').onclick = closeSheet;
 
-$('#fab').onclick = () => ({stock:() => itemSheet(), shop:shopSheet, old:() => oldSheet()})[view]?.();
+$('#fab').onclick = () => ({stock:() => itemSheet(null, stockPreset()), shop:shopSheet, old:() => oldSheet(null, oldPreset())})[view]?.();
+function oldPreset(){ if (!S.osel) return {}; return S.omode === 'cat' ? {cat:S.osel} : {motoId:S.osel === '_none' ? '' : S.osel}; }
 
 /* ---------- Render ---------- */
 function render(){ ({stock:renderStock, shop:renderShop, old:renderOld, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
