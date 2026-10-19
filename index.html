@@ -127,6 +127,7 @@ details.grp[open] summary::after{transform:rotate(90deg)}
   <!-- PARTI VECCHIE -->
   <section class="view" id="v-old">
     <input class="search" id="qo" placeholder="Cerca parte, moto, posto…" autocomplete="off">
+    <div class="chips" id="oldModes"></div>
     <div id="old"></div>
   </section>
 
@@ -184,11 +185,33 @@ details.grp[open] summary::after{transform:rotate(90deg)}
 const KEY = 'box-garage-v1';
 const uid = () => Math.random().toString(36).slice(2, 10);
 const CATS = [
-  {id:'olio', label:'Oli e liquidi'},
-  {id:'ricambio', label:'Ricambi'},
-  {id:'consumo', label:'Consumabili'},
-  {id:'attrezzi', label:'Attrezzi'}
+  {id:'olio', label:'Olio e liquidi'},
+  {id:'motore', label:'Motore'},
+  {id:'guarnizioni', label:'Guarnizioni'},
+  {id:'candele', label:'Candele'},
+  {id:'freni', label:'Freni'},
+  {id:'trasmissione', label:'Trasmissione'},
+  {id:'plastiche', label:'Plastiche'},
+  {id:'accessori', label:'Accessori'},
+  {id:'scarichi', label:'Scarichi'},
+  {id:'altro', label:'Altro'}
 ];
+const PCATS = CATS.filter(c => c.id !== 'olio');
+const catLabel = id => (CATS.find(c => c.id === id) || {label:'Altro'}).label;
+/* Indovina la categoria dai vecchi dati */
+function guessCat(name, unit){
+  const n = String(name).toLowerCase();
+  if (unit === 'L' || /olio|liquido|dot ?4|refrigerante/.test(n)) return 'olio';
+  if (/candel/.test(n)) return 'candele';
+  if (/guarniz|paraolio|o-?ring/.test(n)) return 'guarnizioni';
+  if (/fren|pastigl|disco|pinza/.test(n)) return 'freni';
+  if (/caten|corona|pignon|frizion|cambio/.test(n)) return 'trasmissione';
+  if (/scaric|marmit|silenzi|espansion/.test(n)) return 'scarichi';
+  if (/plastic|parafang|fianchett|tabella|convogliator/.test(n)) return 'plastiche';
+  if (/piston|fasc|biell|cilindr|filtro|testa|valvol|carbur|iniett/.test(n)) return 'motore';
+  if (/manopol|leve|paramani|adesiv|grafic|sella/.test(n)) return 'accessori';
+  return 'altro';
+}
 const CONDS = ['Buono', 'Usurato', 'Da riparare', 'Rotto', 'Da vendere'];
 
 function seed(){
@@ -216,13 +239,13 @@ function seed(){
       it('Liquido freni DOT 4', 'olio', 'L', 0.25, 0.25, 0.5, 1, {model:''}),
       it('Olio frizione minerale', 'olio', 'L', 0.1, 0.1, 0.25, 0.5, {model:'', note:'Per frizione Brembo'}),
       it('Olio forcella SAE 4', 'olio', 'L', 0, 0, 1, 2, {model:''}),
-      it('Candela', 'ricambio', 'pz', 1, 1, 1, 0, {note:'Controlla il codice sul manuale'}),
-      it('Kit pistone', 'ricambio', 'pz', 0, 1, 1, 0, {yFrom:'2023', yTo:'2025'}),
-      it('Filtro aria', 'ricambio', 'pz', 1, 1, 1, 0),
-      it('Olio filtro aria', 'consumo', 'pz', 1, 1, 1, 0, {model:''}),
-      it('Lubrificante catena', 'consumo', 'pz', 1, 1, 1, 0, {model:''})
+      it('Candela', 'candele', 'pz', 1, 1, 1, 0, {note:'Controlla il codice sul manuale'}),
+      it('Kit pistone', 'motore', 'pz', 0, 1, 1, 0, {yFrom:'2023', yTo:'2025'}),
+      it('Filtro aria', 'motore', 'pz', 1, 1, 1, 0),
+      it('Olio filtro aria', 'olio', 'pz', 1, 1, 1, 0, {model:''}),
+      it('Lubrificante catena', 'trasmissione', 'pz', 1, 1, 1, 0, {model:''})
     ],
-    old:[], shop:[], mixRatio:40, mixL:0, lastBackup:null
+    old:[], shop:[], orders:[], mixRatio:40, mixL:0, lastBackup:null, smode:'cat', omode:'cat'
   };
 }
 
@@ -248,7 +271,8 @@ function load(){
 }
 /* Converte i dati delle versioni precedenti senza perdere niente */
 function migrate(){
-  S.shop ||= []; S.motos ||= []; S.items ||= []; S.old ||= [];
+  S.shop ||= []; S.motos ||= []; S.items ||= []; S.old ||= []; S.orders ||= [];
+  S.smode ||= 'cat'; S.omode ||= 'cat';
   if (S.mixL == null) S.mixL = 0;
   S.motos.forEach(m => {
     if (m.model == null){
@@ -270,6 +294,16 @@ function migrate(){
     it.model ??= ''; it.yFrom ??= ''; it.yTo ??= '';
     if (it.barMax == null) it.barMax = it.unit === 'L' ? Math.max(1, Math.ceil(Math.max(+it.qty || 0, (+it.min || 0) * 2))) : 0;
     delete it.step;
+    if (!CATS.some(c => c.id === it.cat)) it.cat = guessCat(it.name, it.unit);
+    if (it.cat === 'olio'){ it.model = ''; it.yFrom = ''; it.yTo = ''; }
+  });
+  S.old.forEach(p => {
+    if (!p.cat || !PCATS.some(c => c.id === p.cat)) p.cat = guessCat(p.name, '') === 'olio' ? 'altro' : guessCat(p.name, '');
+    if (p.motoId === undefined){
+      const m = S.motos.find(x => norm(motoName(x)) === norm(p.from) || (p.from && norm(motoName(x)).includes(norm(p.from))));
+      p.motoId = m ? m.id : '';
+      if (m) p.from = '';
+    }
   });
   if (!S.mf || (S.mf !== 'tutte' && !S.motos.some(m => m.id === S.mf))) S.mf = 'tutte';
   S.v = 3;
@@ -290,15 +324,15 @@ const fmtN = n => r2(n).toLocaleString('it-IT', {maximumFractionDigits:2});
 const fmt = (n, u) => fmtN(n) + (u === 'L' ? ' L' : ' pz');
 const fmtH = h => (Math.round(h * 10) / 10).toLocaleString('it-IT') + ' h';
 const num = sel => { const v = parseFloat(String($(sel).value).replace(',', '.')); return isNaN(v) ? null : v; };
-const motoName = m => [m.brand, m.model].filter(Boolean).join(' ') + (m.year ? ` (${m.year})` : '');
+function motoName(m){ return [m.brand, m.model].filter(Boolean).join(' ') + (m.year ? ` (${m.year})` : ''); }
 const isLow = it => +it.min > 0 && +it.qty < +it.min;
-const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function norm(s){ return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 let tT; function toast(t){ const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => e.classList.remove('on'), 1800); }
 
 /* Compatibilità: un pezzo senza modello va bene per tutte le moto */
 function fits(it, m){
   if (!m) return true;
-  if (!it.model) return true;
+  if (it.cat === 'olio' || !it.model) return true;
   if (!norm(m.brand + m.model).includes(norm(it.model))) return false;
   const y = +m.year; if (!y) return true;
   return (!it.yFrom || y >= +it.yFrom) && (!it.yTo || y <= +it.yTo);
@@ -306,6 +340,7 @@ function fits(it, m){
 const curMoto = () => S.motos.find(m => m.id === S.mf);
 const motoMatch = it => S.mf === 'tutte' || fits(it, curMoto());
 function compat(it){
+  if (it.cat === 'olio') return 'Universale';
   if (!it.model) return '';
   const y = it.yFrom && it.yTo ? (it.yFrom === it.yTo ? it.yFrom : `${it.yFrom}–${it.yTo}`) : it.yFrom ? `dal ${it.yFrom}` : it.yTo ? `fino al ${it.yTo}` : '';
   return it.model + (y ? ' ' + y : '');
@@ -333,50 +368,62 @@ function go(v){
 }
 
 /* ---------- Magazzino ---------- */
-let cat = 'tutti';
-function renderCats(){
-  const all = [{id:'tutti', label:'Tutto'}, {id:'basso', label:'In esaurimento'}, ...CATS];
-  $('#cats').innerHTML = all.map(c => `<button class="chip ${cat===c.id?'on':''}" data-c="${c.id}">${c.label}</button>`).join('');
-  $('#cats').querySelectorAll('.chip').forEach(b => b.onclick = () => { cat = b.dataset.c; renderStock(); });
+let lowOnly = false;
+/* Come dividere: tutti insieme, per categoria o per moto */
+function modeChips(el, key, after, extraLow){
+  const modes = [{id:'all', label:'Tutti insieme'}, {id:'cat', label:'Per categoria'}, {id:'moto', label:'Per moto'}];
+  el.innerHTML = modes.map(m => `<button class="chip ${S[key]===m.id?'on':''}" data-md="${m.id}">${m.label}</button>`).join('')
+    + (extraLow ? `<button class="chip ${lowOnly?'on':''}" data-low>In esaurimento</button>` : '');
+  el.querySelectorAll('[data-md]').forEach(b => b.onclick = () => { S[key] = b.dataset.md; save(); after(); });
+  const l = el.querySelector('[data-low]'); if (l) l.onclick = () => { lowOnly = !lowOnly; after(); };
+}
+/* Raggruppa una lista: restituisce [{title, list}] */
+function groupBy(list, mode, catsList, motoOf){
+  const byName = (a, b) => a.name.localeCompare(b.name);
+  if (mode === 'all') return list.length ? [{title:'', list:[...list].sort(byName)}] : [];
+  if (mode === 'cat') return catsList.map(c => ({title:c.label, list:list.filter(x => x.cat === c.id).sort(byName)})).filter(g => g.list.length);
+  const motos = S.mf === 'tutte' ? S.motos : S.motos.filter(m => m.id === S.mf);
+  const groups = motos.map(m => ({title:motoName(m), list:list.filter(x => motoOf(x, m)).sort(byName)}));
+  const used = new Set(groups.flatMap(g => g.list));
+  groups.push({title:'Per tutte le moto / altro', list:list.filter(x => !used.has(x)).sort(byName)});
+  return groups.filter(g => g.list.length);
+}
+function itemCard(it){
+  const cls = +it.qty <= 0 ? 'zero' : isLow(it) ? 'low' : '';
+  const steps = it.unit === 'L' ? [-1, -0.25, 0.25, 1] : [-1, 1];
+  const ord = S.orders.filter(o => o.itemId === it.id).reduce((n, o) => n + +o.qty, 0);
+  const meta = [S.smode !== 'cat' && it.cat !== 'olio' && catLabel(it.cat), compat(it), it.code, it.loc && '📍 ' + it.loc, it.note, ord && `🚚 ordinati ${fmt(ord, it.unit)}`].filter(Boolean).join(' · ');
+  const bar = +it.barMax > 0 ? `<div class="bar"><i style="width:${Math.min(100, it.qty / it.barMax * 100)}%"></i></div>
+    <div class="barlbl"><span>0</span><span>${fmt(it.barMax, it.unit)}</span></div>` : '';
+  return `<div class="card ${cls}" data-id="${it.id}">
+    <div class="row" data-open>
+      <div class="grow"><div class="name">${esc(it.name)}</div><div class="meta">${esc(meta) || 'Per tutte le moto'}</div></div>
+      <div class="qty">${fmtN(it.qty)} <small>${it.unit === 'L' ? 'L' : 'pz'}</small></div>
+    </div>
+    ${bar}
+    <div class="steps ${steps.length > 2 ? 'four' : ''}">
+      ${steps.map(s => `<button data-d="${s}">${s < 0 ? '−' : '+'} ${it.unit === 'L' ? fmt(Math.abs(s), 'L') : Math.abs(s)}</button>`).join('')}
+    </div>
+  </div>`;
 }
 function renderStock(){
-  renderCats();
+  modeChips($('#cats'), 'smode', renderStock, true);
   renderMotoFilter($('#motoF'), renderStock);
   const q = $('#q').value.trim().toLowerCase();
   const list = S.items.filter(it => {
     if (!motoMatch(it)) return false;
-    if (cat === 'basso' && !isLow(it)) return false;
-    if (cat !== 'tutti' && cat !== 'basso' && it.cat !== cat) return false;
-    if (q && !(it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note + ' ' + it.model).toLowerCase().includes(q)) return false;
+    if (lowOnly && !isLow(it)) return false;
+    if (q && !(it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note + ' ' + it.model + ' ' + catLabel(it.cat)).toLowerCase().includes(q)) return false;
     return true;
   });
   const low = S.items.filter(isLow).length;
   $('#subtitle').textContent = `${S.items.length} articoli` + (low ? ` · ${low} da ricomprare` : '');
   if (!list.length){ $('#stock').innerHTML = `<div class="empty">Niente qui.<br>Tocca + per aggiungere.</div>`; return; }
-  const groups = {};
-  list.forEach(it => (groups[it.cat] ||= []).push(it));
-  let html = '';
-  CATS.forEach(c => {
-    const g = groups[c.id]; if (!g) return;
-    g.sort((a, b) => a.name.localeCompare(b.name));
-    html += `<h2>${c.label}</h2>`;
-    g.forEach(it => {
-      const cls = +it.qty <= 0 ? 'zero' : isLow(it) ? 'low' : '';
-      const steps = it.unit === 'L' ? [-1, -0.25, 0.25, 1] : [-1, 1];
-      const meta = [compat(it), it.code, it.loc && '📍 ' + it.loc, it.note].filter(Boolean).join(' · ');
-      const bar = +it.barMax > 0 ? `<div class="bar"><i style="width:${Math.min(100, it.qty / it.barMax * 100)}%"></i></div>
-        <div class="barlbl"><span>0</span><span>${fmt(it.barMax, it.unit)}</span></div>` : '';
-      html += `<div class="card ${cls}" data-id="${it.id}">
-        <div class="row" data-open>
-          <div class="grow"><div class="name">${esc(it.name)}</div><div class="meta">${esc(meta) || 'Per tutte le moto'}</div></div>
-          <div class="qty">${fmtN(it.qty)} <small>${it.unit === 'L' ? 'L' : 'pz'}</small></div>
-        </div>
-        ${bar}
-        <div class="steps ${steps.length > 2 ? 'four' : ''}">
-          ${steps.map(s => `<button data-d="${s}">${s < 0 ? '−' : '+'} ${it.unit === 'L' ? fmt(Math.abs(s), 'L') : Math.abs(s)}</button>`).join('')}
-        </div>
-      </div>`;
-    });
+  const oils = list.filter(it => it.cat === 'olio').sort((a, b) => a.name.localeCompare(b.name));
+  const parts = list.filter(it => it.cat !== 'olio');
+  let html = oils.length ? `<h2>Olio e liquidi · per tutte le moto</h2>` + oils.map(itemCard).join('') : '';
+  groupBy(parts, S.smode, PCATS, (it, m) => it.model && fits(it, m)).forEach(g => {
+    html += `<h2>${esc(g.title || 'Ricambi')}</h2>` + g.list.map(itemCard).join('');
   });
   $('#stock').innerHTML = html;
   $('#stock').querySelectorAll('.card').forEach(card => {
@@ -394,10 +441,10 @@ function adjust(it, d){
   if (!before && isLow(it)) toast(`${it.name} aggiunto alla spesa`);
 }
 
-function itemSheet(it){
+function itemSheet(it, preset){
   const isNew = !it;
   const cm = curMoto();
-  it = it || {id:uid(), name:'', cat:'ricambio', unit:'pz', qty:1, min:0, buy:1, barMax:0, model:cm ? cm.model : '', yFrom:cm ? cm.year : '', yTo:cm ? cm.year : '', loc:'', code:'', note:''};
+  it = it || {id:uid(), name:'', cat:'motore', unit:'pz', qty:1, min:0, buy:1, barMax:0, model:cm ? cm.model : '', yFrom:cm ? cm.year : '', yTo:cm ? cm.year : '', loc:'', code:'', note:'', ...(preset || {})};
   openSheet(`
     <h3>${isNew ? 'Nuovo articolo' : 'Modifica'}</h3>
     <label>Nome</label><input id="f-name" value="${esc(it.name)}" placeholder="es. Pastiglie freno anteriori">
@@ -407,6 +454,7 @@ function itemSheet(it){
     </div>
     <label>Quantità che hai ora</label><input id="f-qty" type="number" inputmode="decimal" step="any" value="${it.qty}">
 
+    <div id="f-compat">
     <h2 style="margin:20px 0 0">Per quali moto</h2>
     <div class="grid3">
       <div><label>Modello</label><input id="f-model" list="models" value="${esc(it.model)}" placeholder="es. SX 125"></div>
@@ -414,6 +462,7 @@ function itemSheet(it){
       <div><label>All'anno</label><input id="f-y2" type="number" inputmode="numeric" value="${esc(it.yTo)}" placeholder="2025"></div>
     </div>${modelList()}
     <div class="note">Lascia vuoto il modello se va bene per tutte le moto. Puoi scrivere anche solo "SX".</div>
+    </div>
 
     <h2 style="margin:20px 0 0">Riordino</h2>
     <div class="grid2">
@@ -433,7 +482,9 @@ function itemSheet(it){
       ${isNew ? '' : '<button class="danger" id="f-del">Elimina</button>'}
       <button class="acc" id="f-save">Salva</button>
     </div>`);
-  $('#f-cat').onchange = e => { $('#f-unit').value = e.target.value === 'olio' ? 'L' : 'pz'; };
+  const syncCompat = () => { $('#f-compat').style.display = $('#f-cat').value === 'olio' ? 'none' : ''; };
+  $('#f-cat').onchange = e => { $('#f-unit').value = e.target.value === 'olio' ? 'L' : 'pz'; syncCompat(); };
+  syncCompat();
   $('#f-save').onclick = () => {
     const name = $('#f-name').value.trim();
     if (!name){ $('#f-name').focus(); return; }
@@ -441,7 +492,8 @@ function itemSheet(it){
       name, cat:$('#f-cat').value, unit:$('#f-unit').value,
       qty:Math.max(0, num('#f-qty') ?? 0), min:Math.max(0, num('#f-min') ?? 0),
       buy:Math.max(0, num('#f-buy') ?? 0), barMax:Math.max(0, num('#f-bar') ?? 0),
-      model:$('#f-model').value.trim(), yFrom:$('#f-y1').value.trim(), yTo:$('#f-y2').value.trim(),
+      model:$('#f-cat').value === 'olio' ? '' : $('#f-model').value.trim(),
+      yFrom:$('#f-cat').value === 'olio' ? '' : $('#f-y1').value.trim(), yTo:$('#f-cat').value === 'olio' ? '' : $('#f-y2').value.trim(),
       loc:$('#f-loc').value.trim(), code:$('#f-code').value.trim(), note:$('#f-note').value.trim()
     });
     if (isNew) S.items.push(it);
@@ -454,17 +506,19 @@ function itemSheet(it){
 }
 
 /* ---------- Spesa ---------- */
-const autoShop = () => S.items.filter(isLow);
+const isOrdered = it => S.orders.some(o => o.itemId === it.id);
+const autoShop = () => S.items.filter(it => isLow(it) && !isOrdered(it));
 function renderBadge(){
   const n = autoShop().length + S.shop.filter(s => !s.done).length;
   const b = $('#shopBadge'); b.hidden = !n; b.textContent = n;
   const d = dueCount(), mb = $('#motoBadge'); mb.hidden = !d; mb.textContent = d;
 }
+function addOrder(o){ S.orders.push({id:uid(), date:new Date().toISOString().slice(0,10), ...o}); }
 function renderShop(){
   renderMotoFilter($('#motoF2'), renderShop);
   const auto = autoShop().filter(motoMatch), manual = S.shop;
   const n = auto.length + manual.filter(s => !s.done).length;
-  $('#subtitle').textContent = n === 1 ? '1 cosa da prendere' : n + ' cose da prendere';
+  $('#subtitle').textContent = (n === 1 ? '1 cosa da prendere' : n + ' cose da prendere') + (S.orders.length ? ` · ${S.orders.length} in arrivo` : '');
   let html = '';
   if (auto.length){
     html += `<h2>Sotto scorta</h2>`;
@@ -473,38 +527,75 @@ function renderShop(){
         <div class="name">${esc(it.name)}</div>
         <div class="meta">Hai ${fmt(it.qty, it.unit)} · avviso sotto ${fmt(it.min, it.unit)}${compat(it) ? ' · ' + esc(compat(it)) : ''}</div>
         <div class="buyrow">
-          <span>Presi</span>
+          <span>Quantità</span>
           <input type="number" inputmode="decimal" step="any" value="${it.buy || 1}" data-q>
           <span>${it.unit === 'L' ? 'litri' : 'pezzi'}</span>
-          <button class="acc" data-bought>Comprato</button>
-        </div></div>`;
+        </div>
+        <div class="steps"><button data-ord>🚚 Ordinato</button><button class="acc" data-took>✓ Preso</button></div>
+      </div>`;
     });
   }
   html += `<h2>Lista</h2>`;
   if (!manual.length) html += `<div class="empty">Tocca + per aggiungere qualcosa a mano.</div>`;
   [...manual].sort((a, b) => a.done - b.done).forEach(s => {
     html += `<div class="card ${s.done?'done':''}" data-s="${s.id}"><div class="row">
-      <div class="check"></div>
-      <div class="grow"><div class="name">${esc(s.name)}</div>${s.qty ? `<div class="meta">${esc(s.qty)}</div>` : ''}</div>
+      <div class="check" data-ck></div>
+      <div class="grow" data-ck><div class="name">${esc(s.name)}</div>${s.qty ? `<div class="meta">${esc(s.qty)}</div>` : ''}</div>
+      ${s.done ? '' : '<button data-ord>🚚</button>'}
       <button class="danger" data-x aria-label="Rimuovi">✕</button></div></div>`;
   });
   if (manual.some(s => s.done)) html += `<button class="ghost" id="clearDone">Togli quelli spuntati</button>`;
+
+  html += `<h2>Ordinati · in arrivo</h2>`;
+  if (!S.orders.length) html += `<div class="meta" style="padding:0 4px 10px">Niente in arrivo.</div>`;
+  [...S.orders].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(o => {
+    const it = S.items.find(i => i.id === o.itemId);
+    const days = Math.max(0, Math.round((Date.now() - new Date(o.date)) / 864e5));
+    html += `<div class="card" data-o="${o.id}"><div class="row">
+      <div class="grow"><div class="name">${esc(it ? it.name : o.name)}</div>
+      <div class="meta">${o.qty ? esc(it ? fmt(o.qty, it.unit) : o.qty) + ' · ' : ''}ordinato il ${fmtD(o.date)}${days ? ` (${days} gg fa)` : ''}</div></div>
+      <button class="danger" data-x aria-label="Annulla">✕</button>
+      <button class="acc" data-arr>Arrivato</button></div></div>`;
+  });
   $('#shop').innerHTML = html;
 
   $('#shop').querySelectorAll('[data-auto]').forEach(c => {
     const it = S.items.find(i => i.id === c.dataset.auto);
-    c.querySelector('[data-bought]').onclick = () => {
-      const q = parseFloat(String(c.querySelector('[data-q]').value).replace(',', '.')) || 0;
-      if (q <= 0){ c.querySelector('[data-q]').focus(); return; }
-      it.qty = r2(+it.qty + q); save(); renderShop(); toast(`+${fmt(q, it.unit)} in magazzino`);
-    };
+    const q = () => { const v = parseFloat(String(c.querySelector('[data-q]').value).replace(',', '.')) || 0; if (v <= 0) c.querySelector('[data-q]').focus(); return v; };
+    c.querySelector('[data-took]').onclick = () => { const v = q(); if (!v) return; it.qty = r2(+it.qty + v); save(); renderShop(); toast(`+${fmt(v, it.unit)} in magazzino`); };
+    c.querySelector('[data-ord]').onclick = () => { const v = q(); if (!v) return; addOrder({itemId:it.id, qty:v}); save(); renderShop(); toast('Spostato negli ordinati'); };
   });
   $('#shop').querySelectorAll('[data-s]').forEach(c => {
     const s = S.shop.find(x => x.id === c.dataset.s);
-    c.querySelector('.row').onclick = e => { if (e.target.closest('[data-x]')) return; s.done = !s.done; save(); renderShop(); };
+    c.querySelectorAll('[data-ck]').forEach(e => e.onclick = () => { s.done = !s.done; save(); renderShop(); });
+    const ob = c.querySelector('[data-ord]');
+    if (ob) ob.onclick = () => { addOrder({itemId:'', name:s.name, qty:s.qty}); S.shop = S.shop.filter(x => x !== s); save(); renderShop(); toast('Spostato negli ordinati'); };
     c.querySelector('[data-x]').onclick = () => { S.shop = S.shop.filter(x => x !== s); save(); renderShop(); };
   });
+  $('#shop').querySelectorAll('[data-o]').forEach(c => {
+    const o = S.orders.find(x => x.id === c.dataset.o);
+    c.querySelector('[data-x]').onclick = () => { if (confirm('Annullare questo ordine? Torna nella lista della spesa se serve.')){ S.orders = S.orders.filter(x => x !== o); save(); renderShop(); } };
+    c.querySelector('[data-arr]').onclick = () => arrivedSheet(o);
+  });
   const cd = $('#clearDone'); if (cd) cd.onclick = () => { S.shop = S.shop.filter(s => !s.done); save(); renderShop(); };
+}
+function arrivedSheet(o){
+  const it = S.items.find(i => i.id === o.itemId);
+  if (!it){
+    // cosa scritta a mano: la togli dagli ordini e, se vuoi, la crei in magazzino
+    S.orders = S.orders.filter(x => x !== o); save(); renderShop();
+    if (confirm(`"${o.name}" è arrivato. Vuoi aggiungerlo al magazzino?`)) itemSheet(null, {name:o.name, qty:parseFloat(String(o.qty).replace(',', '.')) || 1});
+    return;
+  }
+  openSheet(`<h3>Arrivato: ${esc(it.name)}</h3><div class="meta">Ordinato il ${fmtD(o.date)}</div>
+    <label>Quanti ne sono arrivati (${it.unit === 'L' ? 'litri' : 'pezzi'})</label>
+    <input id="a-q" type="number" inputmode="decimal" step="any" value="${o.qty}">
+    <div class="actions"><button class="acc" id="a-ok">Aggiungi al magazzino</button></div>`);
+  $('#a-ok').onclick = () => {
+    const q = num('#a-q') ?? 0;
+    it.qty = r2(+it.qty + q); S.orders = S.orders.filter(x => x !== o);
+    save(); closeSheet(); renderShop(); toast(`+${fmt(q, it.unit)} in magazzino`);
+  };
 }
 function shopSheet(){
   openSheet(`<h3>Aggiungi alla lista</h3>
@@ -520,29 +611,35 @@ function shopSheet(){
 
 /* ---------- Parti vecchie (niente spesa) ---------- */
 function renderOld(){
+  modeChips($('#oldModes'), 'omode', renderOld, false);
   const q = $('#qo').value.trim().toLowerCase();
-  const list = S.old.filter(p => !q || (p.name + ' ' + p.from + ' ' + p.loc + ' ' + p.note + ' ' + p.cond).toLowerCase().includes(q))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const mName = p => { const m = S.motos.find(x => x.id === p.motoId); return m ? motoName(m) : p.from || ''; };
+  const list = S.old.filter(p => !q || (p.name + ' ' + mName(p) + ' ' + p.loc + ' ' + p.note + ' ' + p.cond + ' ' + catLabel(p.cat)).toLowerCase().includes(q));
   $('#subtitle').textContent = S.old.length === 1 ? '1 parte' : S.old.length + ' parti';
   if (!list.length){ $('#old').innerHTML = `<div class="empty">${S.old.length ? 'Niente trovato.' : 'Qui metti i pezzi tolti dalla moto<br>o quelli che hai in giro.<br>Tocca + per aggiungere.'}</div>`; return; }
-  $('#old').innerHTML = list.map(p => `<div class="card" data-o="${p.id}"><div class="row">
+  const saveMf = S.mf; S.mf = 'tutte';
+  const groups = groupBy(list, S.omode, PCATS, (p, m) => p.motoId === m.id);
+  S.mf = saveMf;
+  $('#old').innerHTML = groups.map(g => (g.title ? `<h2>${esc(g.title)}</h2>` : '') + g.list.map(p => `<div class="card" data-o="${p.id}"><div class="row">
       <div class="grow"><div class="name">${esc(p.name)}${p.cond ? `<span class="cond">${esc(p.cond)}</span>` : ''}</div>
-      <div class="meta">${esc([p.from && 'da ' + p.from, p.loc && '📍 ' + p.loc, p.note].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
-      <div class="qty">${fmtN(p.qty)} <small>pz</small></div></div></div>`).join('');
+      <div class="meta">${esc([S.omode !== 'cat' && catLabel(p.cat), S.omode !== 'moto' && mName(p) && 'da ' + mName(p), p.loc && '📍 ' + p.loc, p.note].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
+      <div class="qty">${fmtN(p.qty)} <small>pz</small></div></div></div>`).join('')).join('');
   $('#old').querySelectorAll('[data-o]').forEach(c => c.onclick = () => oldSheet(S.old.find(p => p.id === c.dataset.o)));
 }
 $('#qo').oninput = renderOld;
 function oldSheet(p){
   const isNew = !p;
-  p = p || {id:uid(), name:'', qty:1, from:curMoto() ? motoName(curMoto()) : '', cond:'Usurato', loc:'', note:'', date:new Date().toISOString().slice(0,10)};
+  p = p || {id:uid(), name:'', qty:1, cat:'motore', motoId:curMoto() ? curMoto().id : '', from:'', cond:'Usurato', loc:'', note:'', date:new Date().toISOString().slice(0,10)};
   openSheet(`<h3>${isNew ? 'Nuova parte vecchia' : 'Modifica'}</h3>
     <label>Cosa</label><input id="o-n" value="${esc(p.name)}" placeholder="es. Pistone vecchio, scarico originale">
     <div class="grid2">
-      <div><label>Quantità</label><input id="o-q" type="number" inputmode="decimal" step="1" value="${p.qty}"></div>
+      <div><label>Categoria</label><select id="o-cat">${PCATS.map(c => `<option value="${c.id}" ${p.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select></div>
       <div><label>Stato</label><select id="o-c">${CONDS.map(c => `<option ${p.cond===c?'selected':''}>${c}</option>`).join('')}</select></div>
     </div>
-    <label>Da quale moto viene</label><input id="o-f" list="motonames" value="${esc(p.from)}" placeholder="Opzionale">
-    <datalist id="motonames">${S.motos.map(m => `<option>${esc(motoName(m))}</option>`).join('')}</datalist>
+    <div class="grid2">
+      <div><label>Da quale moto</label><select id="o-m"><option value="">Nessuna / altra</option>${S.motos.map(m => `<option value="${m.id}" ${p.motoId===m.id?'selected':''}>${esc(motoName(m))}</option>`).join('')}</select></div>
+      <div><label>Quantità</label><input id="o-q" type="number" inputmode="decimal" step="1" value="${p.qty}"></div>
+    </div>
     <div class="grid2">
       <div><label>Dove si trova</label><input id="o-l" value="${esc(p.loc)}" placeholder="Scatola 3"></div>
       <div><label>Tolto il</label><input id="o-d" type="date" value="${esc(p.date)}"></div>
@@ -551,7 +648,8 @@ function oldSheet(p){
     <div class="actions">${isNew ? '' : '<button class="danger" id="o-del">Elimina</button>'}<button class="acc" id="o-ok">Salva</button></div>`);
   $('#o-ok').onclick = () => {
     const n = $('#o-n').value.trim(); if (!n){ $('#o-n').focus(); return; }
-    Object.assign(p, {name:n, qty:Math.max(0, num('#o-q') ?? 1), cond:$('#o-c').value, from:$('#o-f').value.trim(), loc:$('#o-l').value.trim(), date:$('#o-d').value, note:$('#o-note').value.trim()});
+    Object.assign(p, {name:n, cat:$('#o-cat').value, motoId:$('#o-m').value, qty:Math.max(0, num('#o-q') ?? 1), cond:$('#o-c').value, loc:$('#o-l').value.trim(), date:$('#o-d').value, note:$('#o-note').value.trim()});
+    if (p.motoId) p.from = '';
     if (isNew) S.old.push(p);
     save(); closeSheet(); renderOld(); toast('Salvato');
   };
@@ -616,7 +714,7 @@ function renderMoto(){
   $('#moto').querySelectorAll('[data-m]').forEach(c => {
     const m = S.motos.find(x => x.id === c.dataset.m);
     c.querySelector('[data-h]').onclick = () => hoursSheet(m);
-    c.querySelector('[data-v]').onclick = () => { S.mf = m.id; cat = 'tutti'; save(); go('stock'); };
+    c.querySelector('[data-v]').onclick = () => { S.mf = m.id; lowOnly = false; save(); go('stock'); };
     c.querySelector('[data-l]').onclick = () => logSheet(m);
     c.querySelector('[data-e]').onclick = () => motoSheet(m);
     c.querySelector('[data-ta]').onclick = () => taskSheet(m);
