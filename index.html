@@ -366,7 +366,8 @@ let view = 'stock';
 const titles = {stock:'Magazzino', shop:'Da comprare', moto:'Le mie moto', mix:'Miscela'};
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.v));
 function go(v){
-  if (v === view && v === 'stock'){ S.ssel = null; lowOnly = false; $('#q').value = ''; }
+  if (v === view && v === 'moto') S.msel = null;
+  if (v === view && v === 'stock'){ S.ssel = null; S.ssub = null; lowOnly = false; $('#q').value = ''; }
   view = v;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
@@ -384,7 +385,7 @@ function modeChips(el, key, selKey, after, withLow){
   const modes = [{id:'cat', label:'Per categoria'}, {id:'moto', label:'Per moto'}];
   el.innerHTML = modes.map(m => `<button class="chip ${S[key]===m.id && !(withLow && lowOnly)?'on':''}" data-md="${m.id}">${m.label}</button>`).join('')
     + (withLow ? `<button class="chip ${lowOnly?'on':''}" data-low>In esaurimento</button>` : '');
-  el.querySelectorAll('[data-md]').forEach(b => b.onclick = () => { S[key] = b.dataset.md; S[selKey] = null; lowOnly = false; save(); after(); });
+  el.querySelectorAll('[data-md]').forEach(b => b.onclick = () => { S[key] = b.dataset.md; S[selKey] = null; S.ssub = null; lowOnly = false; save(); after(); });
   const l = el.querySelector('[data-low]'); if (l) l.onclick = () => { lowOnly = !lowOnly; S[selKey] = null; after(); };
 }
 /* Menu a blocchi */
@@ -412,7 +413,7 @@ function itemCard(it){
   const cls = +it.qty <= 0 ? 'zero' : isLow(it) ? 'low' : '';
   const steps = it.unit === 'L' ? [-1, -0.25, 0.25, 1] : [-1, 1];
   const ord = S.orders.filter(o => o.itemId === it.id).reduce((n, o) => n + +o.qty, 0);
-  const meta = [S.smode !== 'cat' && it.cat !== 'olio' && catLabel(it.cat), compat(it), it.code, it.loc && '📍 ' + it.loc, it.note, ord && `🚚 ordinati ${fmt(ord, it.unit)}`].filter(Boolean).join(' · ');
+  const meta = [S.smode !== 'cat' && !S.ssub && it.cat !== 'olio' && catLabel(it.cat), compat(it), it.code, it.loc && '📍 ' + it.loc, it.note, ord && `🚚 ordinati ${fmt(ord, it.unit)}`].filter(Boolean).join(' · ');
   const bar = +it.barMax > 0 ? `<div class="bar"><i style="width:${Math.min(100, it.qty / it.barMax * 100)}%"></i></div>
     <div class="barlbl"><span>0</span><span>${fmt(it.barMax, it.unit)}</span></div>` : '';
   return `<div class="card ${cls}" data-id="${it.id}">
@@ -440,16 +441,27 @@ function renderStock(){
   } else {
     const groups = stockGroups();
     const g = groups.find(x => x.id === S.ssel);
-    if (!g){ S.ssel = null; html = tiles(groups); }
-    else {
-      html = `<button class="back" data-back>‹ ${S.smode === 'cat' ? 'Tutte le categorie' : 'Tutte le moto'}</button>
-        <div class="gtitle">${g.icon} ${esc(g.label)}</div>`;
-      html += g.list.length ? g.list.sort(byName).map(itemCard).join('') : `<div class="empty">Ancora niente qui.<br>Tocca + per aggiungere.</div>`;
+    const twoStep = g && S.smode === 'moto' && g.id !== '_oil';   // moto → poi categoria
+    const sub = twoStep ? PCATS.find(c => c.id === S.ssub) : null;
+    if (!g){ S.ssel = null; S.ssub = null; html = tiles(groups); }
+    else if (twoStep && !sub){
+      S.ssub = null;
+      html = `<button class="back" data-back>‹ Tutte le moto</button>
+        <div class="gtitle">${g.icon} ${esc(g.label)}</div>
+        <div class="meta" style="margin:-6px 0 4px">Scegli la categoria</div>`;
+      html += tiles(PCATS.map(c => ({id:c.id, label:c.label, icon:ICON[c.id], list:g.list.filter(i => i.cat === c.id)}))).replace(/data-g=/g, 'data-sub=');
+    } else {
+      const list = sub ? g.list.filter(i => i.cat === sub.id) : g.list;
+      html = `<button class="back" data-back>‹ ${sub ? esc(g.label) : S.smode === 'cat' ? 'Tutte le categorie' : 'Tutte le moto'}</button>
+        <div class="gtitle">${sub ? ICON[sub.id] + ' ' + esc(sub.label) : g.icon + ' ' + esc(g.label)}</div>
+        ${sub ? `<div class="meta" style="margin:-6px 0 10px">${esc(g.label)}</div>` : ''}`;
+      html += list.length ? list.sort(byName).map(itemCard).join('') : `<div class="empty">Ancora niente qui.<br>Tocca + per aggiungere.</div>`;
     }
   }
   $('#stock').innerHTML = html;
-  $('#stock').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { S.ssel = b.dataset.g; save(); renderStock(); window.scrollTo(0, 0); });
-  const bk = $('#stock [data-back]'); if (bk) bk.onclick = () => { S.ssel = null; save(); renderStock(); };
+  $('#stock').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { S.ssel = b.dataset.g; S.ssub = null; save(); renderStock(); window.scrollTo(0, 0); });
+  $('#stock').querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { S.ssub = b.dataset.sub; save(); renderStock(); window.scrollTo(0, 0); });
+  const bk = $('#stock [data-back]'); if (bk) bk.onclick = () => { if (S.ssub) S.ssub = null; else S.ssel = null; save(); renderStock(); window.scrollTo(0, 0); };
   $('#stock').querySelectorAll('.card').forEach(card => {
     const it = S.items.find(i => i.id === card.dataset.id);
     card.querySelector('[data-open]').onclick = () => itemSheet(it);
@@ -459,11 +471,12 @@ function renderStock(){
 $('#q').oninput = renderStock;
 /* Un pezzo nuovo prende categoria o moto del blocco aperto */
 function stockPreset(){
-  if (!S.ssel || S.ssel === '_gen') return {};
+  if (!S.ssel) return {};
   if (S.smode === 'cat') return {cat:S.ssel, unit:S.ssel === 'olio' ? 'L' : 'pz'};
   if (S.ssel === '_oil') return {cat:'olio', unit:'L'};
+  const c = S.ssub ? {cat:S.ssub} : {};
   const m = S.motos.find(x => x.id === S.ssel);
-  return m ? {model:m.model, yFrom:m.year, yTo:m.year} : {};
+  return m ? {model:m.model, yFrom:m.year, yTo:m.year, ...c} : c;
 }
 
 function adjust(it, d){
@@ -657,8 +670,25 @@ function logGroups(m){
 function renderMoto(){
   const dc = dueCount();
   $('#subtitle').textContent = S.motos.length + ' moto' + (dc ? ` · ${dc} ${dc === 1 ? 'lavoro scaduto' : 'lavori scaduti'}` : '');
+  const sel = S.motos.find(m => m.id === S.msel);
+  $('#addMoto').style.display = sel ? 'none' : '';
   if (!S.motos.length){ $('#moto').innerHTML = `<div class="empty">Nessuna moto. Tocca "Aggiungi moto".</div>`; return; }
-  $('#moto').innerHTML = S.motos.map(m => {
+  if (!sel){
+    // elenco a blocchi
+    S.msel = null;
+    $('#moto').innerHTML = `<div class="tiles" style="margin-top:0">${S.motos.map(m => {
+      const due = (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d <= 0; }).length;
+      const soon = (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d > 0 && d <= Math.max(1, t.every * 0.2); }).length;
+      return `<button class="tile" data-mt="${m.id}"><span class="ti">🏍️</span>
+        <b>${esc([m.brand, m.model].filter(Boolean).join(' '))}</b>
+        <span class="tc">${esc([m.year, (+m.hours || 0).toLocaleString('it-IT') + ' ore'].filter(Boolean).join(' · '))}</span>
+        <span class="tc">${due ? `<em style="color:var(--bad)">${due} ${due === 1 ? 'lavoro scaduto' : 'lavori scaduti'}</em>` : soon ? `<em>${soon} in scadenza</em>` : 'Manutenzione ok'}</span>
+      </button>`;
+    }).join('')}</div>`;
+    $('#moto').querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { S.msel = b.dataset.mt; save(); renderMoto(); window.scrollTo(0, 0); });
+    return;
+  }
+  $('#moto').innerHTML = `<button class="back" data-mback>‹ Tutte le moto</button>` + [sel].map(m => {
     const nItems = S.items.filter(i => i.model && fits(i, m)).length;
     const maint = [...(m.maint || [])].sort((a, b) => (dueIn(m, a) ?? 1e9) - (dueIn(m, b) ?? 1e9));
     const groups = logGroups(m);
@@ -692,10 +722,11 @@ function renderMoto(){
       <button class="ghost" data-e style="margin-top:6px">Modifica moto e specifiche</button>
     </div>`;
   }).join('');
+  $('#moto [data-mback]').onclick = () => { S.msel = null; save(); renderMoto(); window.scrollTo(0, 0); };
   $('#moto').querySelectorAll('[data-m]').forEach(c => {
     const m = S.motos.find(x => x.id === c.dataset.m);
     c.querySelector('[data-h]').onclick = () => hoursSheet(m);
-    c.querySelector('[data-v]').onclick = () => { S.smode = 'moto'; S.ssel = m.id; lowOnly = false; $('#q').value = ''; save(); go('stock'); };
+    c.querySelector('[data-v]').onclick = () => { S.smode = 'moto'; S.ssel = m.id; S.ssub = null; lowOnly = false; $('#q').value = ''; save(); go('stock'); };
     c.querySelector('[data-l]').onclick = () => logSheet(m);
     c.querySelector('[data-e]').onclick = () => motoSheet(m);
     c.querySelector('[data-ta]').onclick = () => taskSheet(m);
@@ -807,12 +838,12 @@ function motoSheet(m){
     if (!b && !mo){ $('#m-b').focus(); return; }
     Object.assign(m, {brand:b, model:mo, year:$('#m-y').value.trim(), note:$('#m-note').value.trim(), hours:num('#m-h') ?? 0});
     m.specs = $('#m-s').value.split('\n').map(l => l.split('=')).filter(p => p[0].trim()).map(p => [p[0].trim(), p.slice(1).join('=').trim()]);
-    if (isNew) S.motos.push(m);
+    if (isNew){ S.motos.push(m); S.msel = m.id; }
     save(); closeSheet(); renderMoto(); toast(isNew ? 'Moto aggiunta' : 'Salvato');
   };
   if (!isNew) $('#m-del').onclick = () => {
     if (!confirm(`Eliminare ${motoName(m)}? I ricambi restano in magazzino.`)) return;
-    S.motos = S.motos.filter(x => x !== m);
+    S.motos = S.motos.filter(x => x !== m); S.msel = null;
     if (S.mf === m.id) S.mf = 'tutte';
     save(); closeSheet(); renderMoto();
   };
