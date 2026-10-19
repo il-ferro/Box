@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Box">
+<meta name="theme-color" content="#121212">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Il mio Box</title>
+<style>
+:root{
+  --bg:#111214; --card:#1b1d21; --card2:#24272c; --line:#2f333a;
+  --text:#f2f2f0; --muted:#9a9ea6; --acc:#ff7a1a; --acc-ink:#1a0d00;
+  --ok:#3ecf8e; --warn:#ffb020; --bad:#ff5a5a;
+  --r:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+body{padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom));min-height:100vh}
+header{padding:14px 16px 6px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:28px;margin:0;letter-spacing:-.5px}
+header .sub{color:var(--muted);font-size:13px}
+main{padding:0 16px}
+.view{display:none}.view.on{display:block}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:22px 4px 8px;font-weight:600}
+.card{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{color:var(--muted);font-size:13px;margin-top:2px}
+.qty{font-variant-numeric:tabular-nums;font-weight:700;font-size:20px;text-align:right;min-width:64px}
+.qty small{font-size:12px;color:var(--muted);font-weight:500}
+.low .qty{color:var(--warn)}.zero .qty{color:var(--bad)}
+.bar{height:5px;background:var(--card2);border-radius:3px;margin-top:10px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.low .bar i{background:var(--warn)}.zero .bar i{background:var(--bad)}
+.steps{display:flex;gap:6px;margin-top:10px}
+.steps button{flex:1}
+button{font:inherit;border:0;border-radius:10px;padding:10px 12px;background:var(--card2);color:var(--text);font-weight:600;cursor:pointer}
+button:active{transform:scale(.97)}
+button.acc{background:var(--acc);color:var(--acc-ink)}
+button.ghost{background:transparent;color:var(--acc);padding:6px 4px}
+button.danger{background:transparent;color:var(--bad)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;padding:7px 14px;border-radius:20px;background:var(--card);color:var(--muted);font-size:14px;font-weight:600}
+.chip.on{background:var(--text);color:var(--bg)}
+input,select,textarea{font:inherit;width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:16px}
+label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.search{margin:6px 0 4px}
+.empty{color:var(--muted);text-align:center;padding:28px 10px}
+.check{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center}
+.done .check{background:var(--ok);border-color:var(--ok)}
+.done .check::after{content:"✓";color:#06281a;font-weight:800;font-size:15px}
+.done .name{text-decoration:line-through;color:var(--muted)}
+.tag{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);margin-left:6px;vertical-align:2px}
+.tag.auto{background:#3a2a10;color:var(--warn)}
+.spec{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+.spec:last-child{border:0}.spec span:first-child{color:var(--muted)}.spec span:last-child{text-align:right}
+.big{font-size:40px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.fab{position:fixed;right:18px;bottom:calc(88px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--acc);color:var(--acc-ink);font-size:32px;font-weight:400;box-shadow:0 6px 20px rgba(0,0,0,.45);padding:0;z-index:5}
+nav{position:fixed;left:0;right:0;bottom:0;background:rgba(22,23,26,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom));z-index:6}
+nav button{flex:1;background:none;color:var(--muted);font-size:11px;font-weight:600;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:3px;position:relative}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--acc)}
+.badge{position:absolute;top:2px;left:calc(50% + 6px);background:var(--bad);color:#fff;font-size:11px;border-radius:9px;padding:1px 6px;min-width:18px}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10;display:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:92vh;overflow:auto;background:var(--card);border-radius:20px 20px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom));z-index:11;transform:translateY(105%);transition:transform .25s ease}
+.sheet.on{transform:none}.sheet-bg.on{display:block}
+.grab{width:40px;height:5px;background:var(--line);border-radius:3px;margin:4px auto 10px}
+.sheet h3{margin:4px 0 6px;font-size:20px}
+.actions{display:flex;gap:10px;margin-top:18px}.actions button{flex:1;padding:14px}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:20px;font-weight:600;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20;white-space:nowrap}
+.toast.on{opacity:1}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.offline{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+</style>
+</head>
+<body>
+<header>
+  <div><h1 id="title">Magazzino</h1><div class="sub" id="subtitle"></div></div>
+  <div class="offline"><span class="dot" id="dot"></span><span id="net">offline ok</span></div>
+</header>
+
+<main>
+  <!-- MAGAZZINO -->
+  <section class="view on" id="v-stock">
+    <input class="search" id="q" placeholder="Cerca pezzo, codice, scaffale…" autocomplete="off">
+    <div class="chips" id="cats"></div>
+    <div id="stock"></div>
+  </section>
+
+  <!-- SPESA -->
+  <section class="view" id="v-shop">
+    <div id="shop"></div>
+  </section>
+
+  <!-- MOTO -->
+  <section class="view" id="v-moto">
+    <div id="moto"></div>
+  </section>
+
+  <!-- MISCELA -->
+  <section class="view" id="v-mix">
+    <div class="card">
+      <label style="margin-top:0">Benzina (litri)</label>
+      <div class="row"><input id="mixL" type="number" inputmode="decimal" value="5" step="0.5" min="0"></div>
+      <div class="chips" style="margin-top:10px" id="mixQuick"></div>
+      <label>Rapporto</label>
+      <div class="chips" id="mixRatio"></div>
+      <div style="text-align:center;margin:22px 0 4px">
+        <div class="meta">Olio 2T da aggiungere</div>
+        <div class="big" id="mixOut">125 ml</div>
+      </div>
+      <button class="acc" style="width:100%;padding:14px;margin-top:10px" id="mixUse">Fatto, scala dal magazzino</button>
+      <div class="note" id="mixNote"></div>
+    </div>
+    <h2>Backup</h2>
+    <div class="card">
+      <div class="meta" style="margin:0 0 12px">I dati stanno solo su questo iPhone. Esporta un backup ogni tanto e salvalo in iCloud Drive.</div>
+      <div class="grid2">
+        <button id="exp">Esporta backup</button>
+        <button id="imp">Importa backup</button>
+      </div>
+      <input type="file" id="impFile" accept=".json,application/json" hidden>
+      <div class="note" id="lastBackup"></div>
+    </div>
+  </section>
+</main>
+
+<button class="fab" id="fab" aria-label="Aggiungi">+</button>
+
+<nav>
+  <button data-v="stock" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M7 21v-8h10v8"/><path d="M7 17h10"/></svg>Magazzino</button>
+  <button data-v="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6"/></svg>Spesa<span class="badge" id="shopBadge" hidden></span></button>
+  <button data-v="moto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-7h5l3 7"/><path d="M14 10l-2-4h-2"/><path d="M16 6h3l-2 4"/></svg>Moto</button>
+  <button data-v="mix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/><path d="M9 15a3 3 0 0 0 3 3"/></svg>Miscela</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Dati ---------- */
+const KEY = 'box-garage-v1';
+const uid = () => Math.random().toString(36).slice(2, 10);
+const CATS = [
+  {id:'olio', label:'Oli e liquidi', unit:'L'},
+  {id:'ricambio', label:'Ricambi', unit:'pz'},
+  {id:'consumo', label:'Consumabili', unit:'pz'},
+  {id:'attrezzi', label:'Attrezzi', unit:'pz'}
+];
+const catLabel = id => (CATS.find(c => c.id === id) || {label:id}).label;
+
+function seed(){
+  const m = uid();
+  return {
+    v:1,
+    motos:[{
+      id:m, name:'KTM SX 125 (2025)', note:'Allestimento supermoto', hours:0,
+      specs:[
+        ['Miscela','Olio 2T sintetico JASO FD · 1:40'],
+        ['Olio cambio','15W-50 JASO MA2 · 0,8 L'],
+        ['Liquido raffreddamento','circa 1,2 L'],
+        ['Frizione idraulica','Brembo · olio minerale'],
+        ['Freni','DOT 4'],
+        ['Forcella WP XACT','olio SAE 4'],
+        ['Mono WP XACT','olio SAE 2.5'],
+        ['Cambio olio cambio','ogni ~15 ore'],
+        ['Pistone','ogni ~15 ore (indicazione KTM)'],
+        ['Olio sospensioni','ogni ~45 ore']
+      ],
+      log:[]
+    }],
+    items:[
+      {id:uid(), name:'Olio miscela 2T sintetico', cat:'olio', unit:'L', qty:1, min:1, moto:m, loc:'', code:'', note:'JASO FD', use:'mix'},
+      {id:uid(), name:'Olio cambio 15W-50', cat:'olio', unit:'L', qty:1, min:0.8, moto:m, loc:'', code:'', note:'JASO MA2 · cambio = 0,8 L', step:0.8},
+      {id:uid(), name:'Liquido refrigerante', cat:'olio', unit:'L', qty:1, min:1, moto:m, loc:'', code:'', note:''},
+      {id:uid(), name:'Liquido freni DOT 4', cat:'olio', unit:'L', qty:0.25, min:0.25, moto:m, loc:'', code:'', note:''},
+      {id:uid(), name:'Olio frizione minerale', cat:'olio', unit:'L', qty:0.1, min:0.1, moto:m, loc:'', code:'', note:'Per frizione Brembo'},
+      {id:uid(), name:'Olio forcella SAE 4', cat:'olio', unit:'L', qty:0, min:0, moto:m, loc:'', code:'', note:''},
+      {id:uid(), name:'Candela', cat:'ricambio', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:'Controlla il codice sul manuale'},
+      {id:uid(), name:'Kit pistone', cat:'ricambio', unit:'pz', qty:0, min:1, moto:m, loc:'', code:'', note:''},
+      {id:uid(), name:'Filtro aria', cat:'ricambio', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:''},
+      {id:uid(), name:'Olio filtro aria', cat:'consumo', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:''},
+      {id:uid(), name:'Lubrificante catena', cat:'consumo', unit:'pz', qty:1, min:1, moto:m, loc:'', code:'', note:''}
+    ],
+    shop:[],
+    mixRatio:40,
+    lastBackup:null
+  };
+}
+
+let S;
+function load(){
+  try { const raw = localStorage.getItem(KEY); S = raw ? JSON.parse(raw) : seed(); }
+  catch(e){ S = seed(); }
+  S.shop ||= []; S.motos ||= []; S.items ||= [];
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast('Impossibile salvare!'); }
+  renderBadge();
+}
+load();
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+
+/* ---------- Utili ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n, u) => {
+  n = Math.round((+n || 0) * 100) / 100;
+  const s = n.toLocaleString('it-IT', {maximumFractionDigits:2});
+  return u === 'L' ? s + ' L' : s + ' pz';
+};
+const motoName = id => (S.motos.find(m => m.id === id) || {}).name || '';
+const isLow = it => +it.min > 0 && +it.qty < +it.min;
+let tT; function toast(t){ const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => e.classList.remove('on'), 1800); }
+
+/* ---------- Navigazione ---------- */
+let view = 'stock';
+const titles = {stock:'Magazzino', shop:'Da comprare', moto:'Le mie moto', mix:'Miscela'};
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.v));
+function go(v){
+  view = v;
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
+  $('#title').textContent = titles[v];
+  $('#fab').style.display = v === 'mix' ? 'none' : '';
+  render();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- Magazzino ---------- */
+let cat = 'tutti';
+function renderCats(){
+  const all = [{id:'tutti', label:'Tutto'}, {id:'basso', label:'In esaurimento'}, ...CATS];
+  $('#cats').innerHTML = all.map(c => `<button class="chip ${cat===c.id?'on':''}" data-c="${c.id}">${c.label}</button>`).join('');
+  $('#cats').querySelectorAll('.chip').forEach(b => b.onclick = () => { cat = b.dataset.c; renderStock(); });
+}
+function renderStock(){
+  renderCats();
+  const q = $('#q').value.trim().toLowerCase();
+  let list = S.items.filter(it => {
+    if (cat === 'basso' && !isLow(it) && +it.qty > 0) return false;
+    if (cat !== 'tutti' && cat !== 'basso' && it.cat !== cat) return false;
+    if (q && !(it.name + ' ' + it.code + ' ' + it.loc + ' ' + it.note).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const total = S.items.length, low = S.items.filter(isLow).length;
+  $('#subtitle').textContent = `${total} articoli` + (low ? ` · ${low} da ricomprare` : '');
+  if (!list.length){ $('#stock').innerHTML = `<div class="empty">Niente qui.<br>Tocca + per aggiungere.</div>`; return; }
+  const groups = {};
+  list.forEach(it => (groups[it.cat] ||= []).push(it));
+  let html = '';
+  CATS.forEach(c => {
+    const g = groups[c.id]; if (!g) return;
+    g.sort((a, b) => a.name.localeCompare(b.name));
+    html += `<h2>${c.label}</h2>`;
+    g.forEach(it => {
+      const cls = +it.qty <= 0 ? 'zero' : isLow(it) ? 'low' : '';
+      const step = +it.step || (it.unit === 'L' ? 0.5 : 1);
+      const pct = it.min > 0 ? Math.min(100, it.qty / (it.min * 2) * 100) : (it.qty > 0 ? 100 : 0);
+      const meta = [it.code, it.loc && '📍 ' + it.loc, it.note].filter(Boolean).join(' · ');
+      html += `<div class="card ${cls}" data-id="${it.id}">
+        <div class="row" data-open>
+          <div class="grow"><div class="name">${esc(it.name)}</div><div class="meta">${esc(meta) || (it.min ? 'Minimo ' + fmt(it.min, it.unit) : '&nbsp;')}</div></div>
+          <div class="qty">${fmt(it.qty, it.unit).replace(/ (L|pz)$/, ' <small>$1</small>')}</div>
+        </div>
+        ${it.unit === 'L' ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}
+        <div class="steps">
+          <button data-d="${-step}">− ${fmt(step, it.unit)}</button>
+          <button data-d="${step}">+ ${fmt(step, it.unit)}</button>
+        </div>
+      </div>`;
+    });
+  });
+  $('#stock').innerHTML = html;
+  $('#stock').querySelectorAll('.card').forEach(card => {
+    const it = S.items.find(i => i.id === card.dataset.id);
+    card.querySelector('[data-open]').onclick = () => itemSheet(it);
+    card.querySelectorAll('[data-d]').forEach(b => b.onclick = () => adjust(it, +b.dataset.d));
+  });
+}
+$('#q').oninput = renderStock;
+
+function adjust(it, d){
+  const before = isLow(it);
+  it.qty = Math.max(0, Math.round((+it.qty + d) * 100) / 100);
+  save(); renderStock();
+  if (!before && isLow(it)) toast(`${it.name} aggiunto alla spesa`);
+}
+
+function itemSheet(it){
+  const isNew = !it;
+  it = it || {id:uid(), name:'', cat:'ricambio', unit:'pz', qty:1, min:0, moto:S.motos[0]?.id || '', loc:'', code:'', note:''};
+  openSheet(`
+    <h3>${isNew ? 'Nuovo articolo' : 'Modifica'}</h3>
+    <label>Nome</label><input id="f-name" value="${esc(it.name)}" placeholder="es. Olio cambio 15W-50">
+    <div class="grid2">
+      <div><label>Categoria</label><select id="f-cat">${CATS.map(c => `<option value="${c.id}" ${it.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select></div>
+      <div><label>Unità</label><select id="f-unit"><option value="pz" ${it.unit==='pz'?'selected':''}>Pezzi</option><option value="L" ${it.unit==='L'?'selected':''}>Litri</option></select></div>
+    </div>
+    <div class="grid2">
+      <div><label>Quantità</label><input id="f-qty" type="number" inputmode="decimal" step="any" value="${it.qty}"></div>
+      <div><label>Ricompra sotto</label><input id="f-min" type="number" inputmode="decimal" step="any" value="${it.min}"></div>
+    </div>
+    <label>Per quale moto</label>
+    <select id="f-moto"><option value="">Tutte / generico</option>${S.motos.map(m => `<option value="${m.id}" ${it.moto===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>
+    <div class="grid2">
+      <div><label>Dove si trova</label><input id="f-loc" value="${esc(it.loc)}" placeholder="Scaffale 2"></div>
+      <div><label>Codice</label><input id="f-code" value="${esc(it.code)}" placeholder="Opzionale"></div>
+    </div>
+    <label>Note</label><input id="f-note" value="${esc(it.note)}">
+    <div class="actions">
+      ${isNew ? '' : '<button class="danger" id="f-del">Elimina</button>'}
+      <button class="acc" id="f-save">Salva</button>
+    </div>`);
+  $('#f-cat').onchange = e => { $('#f-unit').value = e.target.value === 'olio' ? 'L' : 'pz'; };
+  $('#f-save').onclick = () => {
+    const name = $('#f-name').value.trim();
+    if (!name){ $('#f-name').focus(); return; }
+    Object.assign(it, {
+      name, cat:$('#f-cat').value, unit:$('#f-unit').value,
+      qty:Math.max(0, parseFloat(String($('#f-qty').value).replace(',', '.')) || 0),
+      min:Math.max(0, parseFloat(String($('#f-min').value).replace(',', '.')) || 0),
+      moto:$('#f-moto').value, loc:$('#f-loc').value.trim(), code:$('#f-code').value.trim(), note:$('#f-note').value.trim()
+    });
+    if (isNew) S.items.push(it);
+    save(); closeSheet(); render(); toast('Salvato');
+  };
+  if (!isNew) $('#f-del').onclick = () => {
+    if (!confirm(`Eliminare "${it.name}"?`)) return;
+    S.items = S.items.filter(i => i !== it); save(); closeSheet(); render();
+  };
+}
+
+/* ---------- Spesa ---------- */
+function autoShop(){ return S.items.filter(it => isLow(it) || (+it.min > 0 && +it.qty <= 0)); }
+function renderBadge(){
+  const n = autoShop().length + S.shop.filter(s => !s.done).length;
+  const b = $('#shopBadge'); b.hidden = !n; b.textContent = n;
+}
+function renderShop(){
+  const auto = autoShop(), manual = S.shop;
+  $('#subtitle').textContent = (auto.length + manual.filter(s => !s.done).length) + ' cose da prendere';
+  let html = '';
+  if (auto.length){
+    html += `<h2>Sotto scorta</h2>`;
+    auto.forEach(it => {
+      const need = Math.max(0, it.min * 2 - it.qty);
+      html += `<div class="card" data-auto="${it.id}"><div class="row">
+        <div class="grow"><div class="name">${esc(it.name)}<span class="tag auto">AUTO</span></div>
+        <div class="meta">Hai ${fmt(it.qty, it.unit)} · minimo ${fmt(it.min, it.unit)}${it.moto ? ' · ' + esc(motoName(it.moto)) : ''}</div></div>
+        <button class="acc" data-bought>Comprato</button></div></div>`;
+    });
+  }
+  html += `<h2>Lista</h2>`;
+  if (!manual.length) html += `<div class="empty">Tocca + per aggiungere qualcosa a mano.</div>`;
+  [...manual].sort((a, b) => a.done - b.done).forEach(s => {
+    html += `<div class="card ${s.done?'done':''}" data-s="${s.id}"><div class="row">
+      <div class="check"></div>
+      <div class="grow"><div class="name">${esc(s.name)}</div>${s.qty ? `<div class="meta">${esc(s.qty)}</div>` : ''}</div>
+      <button class="danger" data-x aria-label="Rimuovi">✕</button></div></div>`;
+  });
+  if (manual.some(s => s.done)) html += `<button class="ghost" id="clearDone">Togli quelli spuntati</button>`;
+  $('#shop').innerHTML = html;
+
+  $('#shop').querySelectorAll('[data-auto]').forEach(c => {
+    const it = S.items.find(i => i.id === c.dataset.auto);
+    c.querySelector('[data-bought]').onclick = () => boughtSheet(it);
+  });
+  $('#shop').querySelectorAll('[data-s]').forEach(c => {
+    const s = S.shop.find(x => x.id === c.dataset.s);
+    c.querySelector('.row').onclick = e => { if (e.target.closest('[data-x]')) return; s.done = !s.done; save(); renderShop(); };
+    c.querySelector('[data-x]').onclick = () => { S.shop = S.shop.filter(x => x !== s); save(); renderShop(); };
+  });
+  const cd = $('#clearDone'); if (cd) cd.onclick = () => { S.shop = S.shop.filter(s => !s.done); save(); renderShop(); };
+}
+function boughtSheet(it){
+  const sug = Math.max(it.unit === 'L' ? 1 : 1, Math.ceil(it.min * 2 - it.qty));
+  openSheet(`<h3>${esc(it.name)}</h3><div class="meta">Quanto hai comprato?</div>
+    <label>Quantità (${it.unit === 'L' ? 'litri' : 'pezzi'})</label>
+    <input id="b-q" type="number" inputmode="decimal" step="any" value="${sug}">
+    <div class="actions"><button class="acc" id="b-ok">Aggiungi al magazzino</button></div>`);
+  $('#b-ok').onclick = () => {
+    const q = parseFloat(String($('#b-q').value).replace(',', '.')) || 0;
+    it.qty = Math.round((+it.qty + q) * 100) / 100; save(); closeSheet(); renderShop(); toast('Magazzino aggiornato');
+  };
+}
+function shopSheet(){
+  openSheet(`<h3>Aggiungi alla lista</h3>
+    <label>Cosa</label><input id="s-n" placeholder="es. Pastiglie freno anteriori">
+    <label>Quantità / note</label><input id="s-q" placeholder="es. 2 pz, marca…">
+    <div class="actions"><button class="acc" id="s-ok">Aggiungi</button></div>`);
+  setTimeout(() => $('#s-n').focus(), 250);
+  $('#s-ok').onclick = () => {
+    const n = $('#s-n').value.trim(); if (!n) return;
+    S.shop.push({id:uid(), name:n, qty:$('#s-q').value.trim(), done:false}); save(); closeSheet(); renderShop();
+  };
+}
+
+/* ---------- Moto ---------- */
+function renderMoto(){
+  $('#subtitle').textContent = S.motos.length + (S.motos.length === 1 ? ' moto' : ' moto');
+  if (!S.motos.length){ $('#moto').innerHTML = `<div class="empty">Tocca + per aggiungere una moto.</div>`; return; }
+  $('#moto').innerHTML = S.motos.map(m => {
+    const last = m.log[0];
+    const items = S.items.filter(i => i.moto === m.id);
+    return `<div class="card" data-m="${m.id}">
+      <div class="row"><div class="grow"><div class="name" style="font-size:19px">${esc(m.name)}</div><div class="meta">${esc(m.note || '')}</div></div>
+      <div class="qty">${(+m.hours || 0).toLocaleString('it-IT')} <small>ore</small></div></div>
+      <div class="steps"><button data-h>Aggiorna ore</button><button data-l class="acc">Registra lavoro</button></div>
+      <h2 style="margin-top:18px">Specifiche</h2>
+      ${(m.specs || []).map(s => `<div class="spec"><span>${esc(s[0])}</span><span>${esc(s[1])}</span></div>`).join('')}
+      <div class="note">Valori indicativi: verifica sempre sul manuale d'uso della tua moto.</div>
+      <h2 style="margin-top:18px">Ultimi lavori</h2>
+      ${m.log.length ? m.log.slice(0, 8).map((l, i) => `<div class="spec" data-li="${i}"><span>${esc(new Date(l.date).toLocaleDateString('it-IT'))}${l.hours ? ' · ' + esc(l.hours) + ' h' : ''}</span><span>${esc(l.what)}</span></div>`).join('') : '<div class="meta">Ancora nessun lavoro registrato.</div>'}
+      <div class="meta" style="margin-top:12px">${items.length} articoli in magazzino per questa moto</div>
+      <div class="actions" style="margin-top:10px"><button class="ghost" data-e>Modifica moto</button></div>
+    </div>`;
+  }).join('');
+  $('#moto').querySelectorAll('[data-m]').forEach(c => {
+    const m = S.motos.find(x => x.id === c.dataset.m);
+    c.querySelector('[data-h]').onclick = () => hoursSheet(m);
+    c.querySelector('[data-l]').onclick = () => logSheet(m);
+    c.querySelector('[data-e]').onclick = () => motoSheet(m);
+    c.querySelectorAll('[data-li]').forEach(r => r.onclick = () => {
+      if (confirm('Eliminare questo lavoro dal registro?')){ m.log.splice(+r.dataset.li, 1); save(); renderMoto(); }
+    });
+  });
+}
+function hoursSheet(m){
+  openSheet(`<h3>Ore motore</h3><label>${esc(m.name)}</label>
+    <input id="h-v" type="number" inputmode="decimal" step="0.1" value="${m.hours || 0}">
+    <div class="actions"><button class="acc" id="h-ok">Salva</button></div>`);
+  $('#h-ok').onclick = () => { m.hours = parseFloat(String($('#h-v').value).replace(',', '.')) || 0; save(); closeSheet(); renderMoto(); };
+}
+function logSheet(m){
+  const oils = S.items.filter(i => i.unit === 'L' && (!i.moto || i.moto === m.id));
+  openSheet(`<h3>Registra lavoro</h3>
+    <label>Cosa hai fatto</label><input id="l-w" list="l-sug" placeholder="es. Cambio olio cambio">
+    <datalist id="l-sug"><option>Cambio olio cambio</option><option>Pistone nuovo</option><option>Pulizia filtro aria</option><option>Catena e corona</option><option>Spurgo freni</option><option>Olio forcella</option><option>Candela nuova</option></datalist>
+    <div class="grid2">
+      <div><label>Data</label><input id="l-d" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div><label>Ore motore</label><input id="l-h" type="number" inputmode="decimal" step="0.1" value="${m.hours || ''}"></div>
+    </div>
+    <label>Hai usato liquidi? (scala dal magazzino)</label>
+    <select id="l-o"><option value="">Nessuno</option>${oils.map(o => `<option value="${o.id}">${esc(o.name)} (hai ${fmt(o.qty, 'L')})</option>`).join('')}</select>
+    <label>Litri usati</label><input id="l-q" type="number" inputmode="decimal" step="0.05" placeholder="es. 0,8">
+    <div class="actions"><button class="acc" id="l-ok">Salva</button></div>`);
+  $('#l-w').oninput = e => {
+    if (/olio cambio/i.test(e.target.value)){
+      const o = oils.find(o => /cambio|15w/i.test(o.name)); if (o){ $('#l-o').value = o.id; $('#l-q').value = 0.8; }
+    }
+  };
+  $('#l-ok').onclick = () => {
+    const what = $('#l-w').value.trim(); if (!what) return;
+    const h = parseFloat(String($('#l-h').value).replace(',', '.'));
+    m.log.unshift({date:$('#l-d').value || new Date().toISOString(), hours:isNaN(h) ? '' : h, what});
+    if (!isNaN(h) && h > (m.hours || 0)) m.hours = h;
+    const o = S.items.find(i => i.id === $('#l-o').value), q = parseFloat(String($('#l-q').value).replace(',', '.'));
+    if (o && q > 0) o.qty = Math.max(0, Math.round((o.qty - q) * 100) / 100);
+    save(); closeSheet(); renderMoto(); toast(o && q > 0 ? `Scalati ${fmt(q, 'L')} di ${o.name}` : 'Registrato');
+  };
+}
+function motoSheet(m){
+  const isNew = !m;
+  m = m || {id:uid(), name:'', note:'', hours:0, specs:[], log:[]};
+  openSheet(`<h3>${isNew ? 'Nuova moto' : 'Modifica moto'}</h3>
+    <label>Nome</label><input id="m-n" value="${esc(m.name)}" placeholder="es. Husqvarna TE 300 (2022)">
+    <label>Note</label><input id="m-note" value="${esc(m.note)}">
+    <label>Specifiche (una per riga: voce = valore)</label>
+    <textarea id="m-s" rows="7" placeholder="Olio cambio = 0,8 L 15W-50">${esc((m.specs || []).map(s => s[0] + ' = ' + s[1]).join('\n'))}</textarea>
+    <div class="actions">${isNew ? '' : '<button class="danger" id="m-del">Elimina</button>'}<button class="acc" id="m-ok">Salva</button></div>`);
+  $('#m-ok').onclick = () => {
+    const n = $('#m-n').value.trim(); if (!n) return;
+    m.name = n; m.note = $('#m-note').value.trim();
+    m.specs = $('#m-s').value.split('\n').map(l => l.split('=')).filter(p => p[0].trim()).map(p => [p[0].trim(), p.slice(1).join('=').trim()]);
+    if (isNew) S.motos.push(m); save(); closeSheet(); renderMoto();
+  };
+  if (!isNew) $('#m-del').onclick = () => {
+    if (!confirm(`Eliminare ${m.name}? Gli articoli restano in magazzino.`)) return;
+    S.motos = S.motos.filter(x => x !== m); S.items.forEach(i => { if (i.moto === m.id) i.moto = ''; }); save(); closeSheet(); renderMoto();
+  };
+}
+
+/* ---------- Miscela ---------- */
+function mixOil(){ return S.items.find(i => i.use === 'mix') || S.items.find(i => /2t|miscela/i.test(i.name)); }
+function renderMix(){
+  $('#subtitle').textContent = 'Calcolo olio per la benzina';
+  $('#mixQuick').innerHTML = [1, 2, 3, 5, 7.5, 10].map(l => `<button class="chip" data-l="${l}">${l.toLocaleString('it-IT')} L</button>`).join('');
+  $('#mixQuick').querySelectorAll('.chip').forEach(b => b.onclick = () => { $('#mixL').value = b.dataset.l; calcMix(); });
+  $('#mixRatio').innerHTML = [32, 40, 50, 60].map(r => `<button class="chip ${S.mixRatio==r?'on':''}" data-r="${r}">1:${r}</button>`).join('');
+  $('#mixRatio').querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mixRatio = +b.dataset.r; save(); renderMix(); });
+  $('#lastBackup').textContent = S.lastBackup ? 'Ultimo backup: ' + new Date(S.lastBackup).toLocaleDateString('it-IT') : 'Nessun backup ancora.';
+  calcMix();
+}
+function calcMix(){
+  const L = parseFloat(String($('#mixL').value).replace(',', '.')) || 0;
+  const ml = Math.round(L * 1000 / S.mixRatio);
+  $('#mixOut').textContent = ml + ' ml';
+  const o = mixOil();
+  $('#mixNote').textContent = o ? `Hai ${fmt(o.qty, 'L')} di ${o.name}.` : 'Aggiungi un olio 2T in magazzino per scalarlo in automatico.';
+  return ml;
+}
+$('#mixL').oninput = calcMix;
+$('#mixUse').onclick = () => {
+  const ml = calcMix(), o = mixOil();
+  if (!o){ toast('Nessun olio 2T in magazzino'); return; }
+  o.qty = Math.max(0, Math.round((o.qty - ml / 1000) * 1000) / 1000); save(); calcMix();
+  toast(`Scalati ${ml} ml di olio 2T`);
+};
+
+/* ---------- Backup ---------- */
+$('#exp').onclick = async () => {
+  S.lastBackup = new Date().toISOString(); save();
+  const name = `box-backup-${new Date().toISOString().slice(0,10)}.json`;
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:'application/json'});
+  try {
+    const file = new File([blob], name, {type:'application/json'});
+    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Backup Box'}); renderMix(); return; }
+  } catch(e){ if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000); renderMix();
+};
+$('#imp').onclick = () => $('#impFile').click();
+$('#impFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (!d.items || !d.motos) throw 0;
+    if (!confirm('Sostituire tutti i dati attuali con quelli del backup?')) return;
+    S = d; save(); render(); toast('Backup importato');
+  } catch(err){ toast('File non valido'); }
+  e.target.value = '';
+};
+
+/* ---------- Sheet ---------- */
+function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').classList.add('on'); $('#sheetBg').classList.add('on'); }
+function closeSheet(){ $('#sheet').classList.remove('on'); $('#sheetBg').classList.remove('on'); document.activeElement && document.activeElement.blur(); }
+$('#sheetBg').onclick = closeSheet;
+
+$('#fab').onclick = () => ({stock:() => itemSheet(), shop:shopSheet, moto:() => motoSheet()})[view]?.();
+
+/* ---------- Render ---------- */
+function render(){ ({stock:renderStock, shop:renderShop, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
+function net(){ const on = navigator.onLine; $('#dot').style.background = on ? 'var(--ok)' : 'var(--warn)'; $('#net').textContent = on ? 'online' : 'offline'; }
+addEventListener('online', net); addEventListener('offline', net); net();
+save(); render();
+
+/* ---------- Offline ---------- */
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
