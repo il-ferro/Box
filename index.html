@@ -132,13 +132,6 @@ details.grp[open] summary::after{transform:rotate(90deg)}
     <div id="shop"></div>
   </section>
 
-  <!-- PARTI VECCHIE -->
-  <section class="view" id="v-old">
-    <input class="search" id="qo" placeholder="Cerca parte, moto, posto…" autocomplete="off">
-    <div class="chips" id="oldModes"></div>
-    <div id="old"></div>
-  </section>
-
   <!-- MOTO -->
   <section class="view" id="v-moto">
     <button class="acc" id="addMoto" style="width:100%;padding:14px;margin:6px 0 12px">+ Aggiungi moto</button>
@@ -152,8 +145,9 @@ details.grp[open] summary::after{transform:rotate(90deg)}
       <input id="mixL" type="number" inputmode="decimal" step="0.1" min="0">
       <div class="mixadd" id="mixAdd"></div>
       <button id="mixZero" style="width:100%;margin-top:8px">Azzera</button>
-      <label>Rapporto</label>
+      <label>Percentuale olio</label>
       <div class="chips" id="mixRatio"></div>
+      <div class="row" style="margin-top:8px"><input id="mixPct" type="number" inputmode="decimal" step="0.1" min="0" style="width:110px"><span class="meta" style="margin:0">% · scrivi tu un valore diverso</span></div>
       <div style="text-align:center;margin:22px 0 4px">
         <div class="meta">Olio 2T da aggiungere</div>
         <div class="big" id="mixOut">0 ml</div>
@@ -179,7 +173,6 @@ details.grp[open] summary::after{transform:rotate(90deg)}
 <nav>
   <button data-v="stock" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M7 21v-8h10v8"/><path d="M7 17h10"/></svg>Magazzino</button>
   <button data-v="shop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6"/></svg>Spesa<span class="badge" id="shopBadge" hidden></span></button>
-  <button data-v="old"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Vecchie</button>
   <button data-v="moto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-7h5l3 7"/><path d="M14 10l-2-4h-2"/><path d="M16 6h3l-2 4"/></svg>Moto<span class="badge" id="motoBadge" hidden></span></button>
   <button data-v="mix"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z"/><path d="M9 15a3 3 0 0 0 3 3"/></svg>Miscela</button>
 </nav>
@@ -202,6 +195,7 @@ const CATS = [
   {id:'plastiche', label:'Plastiche'},
   {id:'accessori', label:'Accessori'},
   {id:'scarichi', label:'Scarichi'},
+  {id:'viteria', label:'Viteria'},
   {id:'altro', label:'Altro'}
 ];
 const PCATS = CATS.filter(c => c.id !== 'olio');
@@ -215,6 +209,7 @@ function guessCat(name, unit){
   if (/fren|pastigl|disco|pinza/.test(n)) return 'freni';
   if (/caten|corona|pignon|frizion|cambio/.test(n)) return 'trasmissione';
   if (/scaric|marmit|silenzi|espansion/.test(n)) return 'scarichi';
+  if (/vit[ei]|bullon|dad[oi]|rondell|prigionier|viteria/.test(n)) return 'viteria';
   if (/plastic|parafang|fianchett|tabella|convogliator/.test(n)) return 'plastiche';
   if (/piston|fasc|biell|cilindr|filtro|testa|valvol|carbur|iniett/.test(n)) return 'motore';
   if (/manopol|leve|paramani|adesiv|grafic|sella/.test(n)) return 'accessori';
@@ -230,7 +225,7 @@ function seed(){
     motos:[{
       id:uid(), brand:'KTM', model:'SX 125', year:'2025', note:'Allestimento supermoto', hours:0,
       specs:[
-        ['Miscela','Olio 2T sintetico JASO FD · 1:40'],
+        ['Miscela','Olio 2T sintetico JASO FD · 2,5%'],
         ['Olio cambio','15W-50 JASO MA2 · 0,8 L'],
         ['Liquido raffreddamento','circa 1,2 L'],
         ['Frizione idraulica','Brembo · olio minerale'],
@@ -253,7 +248,7 @@ function seed(){
       it('Olio filtro aria', 'olio', 'pz', 1, 1, 1, 0, {model:''}),
       it('Lubrificante catena', 'trasmissione', 'pz', 1, 1, 1, 0, {model:''})
     ],
-    old:[], shop:[], orders:[], mixRatio:40, mixL:0, lastBackup:null, smode:'cat', omode:'cat'
+    old:[], shop:[], orders:[], mixPct:2.5, mixL:0, lastBackup:null, smode:'cat', omode:'cat'
   };
 }
 
@@ -283,6 +278,10 @@ function migrate(){
   if (!['cat','moto'].includes(S.smode)) S.smode = 'cat';
   if (!['cat','moto'].includes(S.omode)) S.omode = 'cat';
   if (S.mixL == null) S.mixL = 0;
+  if (S.mixPct == null) S.mixPct = S.mixRatio ? Math.round(1000 / S.mixRatio) / 10 : 2.5;
+  delete S.mixRatio;
+  // nelle specifiche: 1:40 → 2,5%
+  S.motos.forEach(m => (m.specs || []).forEach(sp => { sp[1] = String(sp[1]).replace(/\b1\s*:\s*(\d{2,3})\b/g, (_, r) => (Math.round(1000 / r) / 10).toLocaleString('it-IT') + '%'); }));
   S.motos.forEach(m => {
     if (m.model == null){
       const r = /^(\S+)\s*(.*?)\s*(?:\((\d{4})\))?\s*$/.exec(m.name || '') || [];
@@ -364,11 +363,10 @@ const modelList = () => `<datalist id="models">${[...new Set(S.motos.map(m => m.
 
 /* ---------- Navigazione ---------- */
 let view = 'stock';
-const titles = {stock:'Magazzino', shop:'Da comprare', old:'Parti vecchie', moto:'Le mie moto', mix:'Miscela'};
+const titles = {stock:'Magazzino', shop:'Da comprare', moto:'Le mie moto', mix:'Miscela'};
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.v));
 function go(v){
   if (v === view && v === 'stock'){ S.ssel = null; lowOnly = false; $('#q').value = ''; }
-  if (v === view && v === 'old'){ S.osel = null; $('#qo').value = ''; }
   view = v;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'v-' + v));
@@ -380,7 +378,7 @@ function go(v){
 
 /* ---------- Magazzino ---------- */
 let lowOnly = false;
-const ICON = {olio:'🛢️', motore:'⚙️', guarnizioni:'⭕', candele:'⚡', freni:'🛑', trasmissione:'⛓️', plastiche:'🧩', accessori:'🎒', scarichi:'💨', altro:'📦'};
+const ICON = {olio:'🛢️', motore:'⚙️', guarnizioni:'⭕', candele:'⚡', freni:'🛑', trasmissione:'⛓️', plastiche:'🧩', accessori:'🎒', scarichi:'💨', viteria:'🔩', altro:'📦'};
 /* Scelta: per categoria o per moto */
 function modeChips(el, key, selKey, after, withLow){
   const modes = [{id:'cat', label:'Per categoria'}, {id:'moto', label:'Per moto'}];
@@ -447,10 +445,6 @@ function renderStock(){
       html = `<button class="back" data-back>‹ ${S.smode === 'cat' ? 'Tutte le categorie' : 'Tutte le moto'}</button>
         <div class="gtitle">${g.icon} ${esc(g.label)}</div>`;
       html += g.list.length ? g.list.sort(byName).map(itemCard).join('') : `<div class="empty">Ancora niente qui.<br>Tocca + per aggiungere.</div>`;
-      if (g.moto){
-        const oils = S.items.filter(i => i.cat === 'olio').sort(byName);
-        if (oils.length) html += `<h2>Olio e liquidi · universali</h2>` + oils.map(itemCard).join('');
-      }
     }
   }
   $('#stock').innerHTML = html;
@@ -646,68 +640,6 @@ function shopSheet(){
   };
 }
 
-/* ---------- Parti vecchie (niente spesa) ---------- */
-function renderOld(){
-  modeChips($('#oldModes'), 'omode', 'osel', renderOld, false);
-  const q = $('#qo').value.trim().toLowerCase();
-  const mName = p => { const m = S.motos.find(x => x.id === p.motoId); return m ? motoName(m) : p.from || ''; };
-  $('#subtitle').textContent = S.old.length === 1 ? '1 parte' : S.old.length + ' parti';
-  const card = p => `<div class="card" data-o="${p.id}"><div class="row">
-      <div class="grow"><div class="name">${esc(p.name)}${p.cond ? `<span class="cond">${esc(p.cond)}</span>` : ''}</div>
-      <div class="meta">${esc([S.omode !== 'cat' && catLabel(p.cat), S.omode !== 'moto' && mName(p) && 'da ' + mName(p), p.loc && '📍 ' + p.loc, p.note].filter(Boolean).join(' · ')) || '&nbsp;'}</div></div>
-      <div class="qty">${fmtN(p.qty)} <small>pz</small></div></div></div>`;
-  let html;
-  if (q){
-    const list = S.old.filter(p => (p.name + ' ' + mName(p) + ' ' + p.loc + ' ' + p.note + ' ' + p.cond + ' ' + catLabel(p.cat)).toLowerCase().includes(q)).sort(byName);
-    html = list.length ? `<h2>Risultati (${list.length})</h2>` + list.map(card).join('') : `<div class="empty">Niente trovato.</div>`;
-  } else {
-    const groups = S.omode === 'cat'
-      ? PCATS.map(c => ({id:c.id, label:c.label, icon:ICON[c.id], list:S.old.filter(p => p.cat === c.id)}))
-      : [...S.motos.map(m => ({id:m.id, label:motoName(m), icon:'🏍️', list:S.old.filter(p => p.motoId === m.id)})),
-         {id:'_none', label:'Nessuna / altra moto', icon:'📦', list:S.old.filter(p => !S.motos.some(m => m.id === p.motoId))}];
-    const g = groups.find(x => x.id === S.osel);
-    if (!g){ S.osel = null; html = tiles(groups); }
-    else html = `<button class="back" data-back>‹ ${S.omode === 'cat' ? 'Tutte le categorie' : 'Tutte le moto'}</button>
-        <div class="gtitle">${g.icon} ${esc(g.label)}</div>` + (g.list.length ? g.list.sort(byName).map(card).join('') : `<div class="empty">Ancora niente qui.<br>Tocca + per aggiungere.</div>`);
-  }
-  $('#old').innerHTML = html;
-  $('#old').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { S.osel = b.dataset.g; save(); renderOld(); window.scrollTo(0, 0); });
-  const bk = $('#old [data-back]'); if (bk) bk.onclick = () => { S.osel = null; save(); renderOld(); };
-  $('#old').querySelectorAll('[data-o]').forEach(c => c.onclick = () => oldSheet(S.old.find(p => p.id === c.dataset.o)));
-}
-$('#qo').oninput = renderOld;
-function oldSheet(p, preset){
-  const isNew = !p;
-  p = p || {id:uid(), name:'', qty:1, cat:'motore', motoId:curMoto() ? curMoto().id : '', from:'', cond:'Usurato', loc:'', note:'', date:new Date().toISOString().slice(0,10), ...(preset || {})};
-  openSheet(`<h3>${isNew ? 'Nuova parte vecchia' : 'Modifica'}</h3>
-    <label>Cosa</label><input id="o-n" value="${esc(p.name)}" placeholder="es. Pistone vecchio, scarico originale">
-    <div class="grid2">
-      <div><label>Categoria</label><select id="o-cat">${PCATS.map(c => `<option value="${c.id}" ${p.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select></div>
-      <div><label>Stato</label><select id="o-c">${CONDS.map(c => `<option ${p.cond===c?'selected':''}>${c}</option>`).join('')}</select></div>
-    </div>
-    <div class="grid2">
-      <div><label>Da quale moto</label><select id="o-m"><option value="">Nessuna / altra</option>${S.motos.map(m => `<option value="${m.id}" ${p.motoId===m.id?'selected':''}>${esc(motoName(m))}</option>`).join('')}</select></div>
-      <div><label>Quantità</label><input id="o-q" type="number" inputmode="decimal" step="1" value="${p.qty}"></div>
-    </div>
-    <div class="grid2">
-      <div><label>Dove si trova</label><input id="o-l" value="${esc(p.loc)}" placeholder="Scatola 3"></div>
-      <div><label>Tolto il</label><input id="o-d" type="date" value="${esc(p.date)}"></div>
-    </div>
-    <label>Note</label><input id="o-note" value="${esc(p.note)}" placeholder="es. Ha fatto 40 ore">
-    <div class="actions">${isNew ? '' : '<button class="danger" id="o-del">Elimina</button>'}<button class="acc" id="o-ok">Salva</button></div>`);
-  $('#o-ok').onclick = () => {
-    const n = $('#o-n').value.trim(); if (!n){ $('#o-n').focus(); return; }
-    Object.assign(p, {name:n, cat:$('#o-cat').value, motoId:$('#o-m').value, qty:Math.max(0, num('#o-q') ?? 1), cond:$('#o-c').value, loc:$('#o-l').value.trim(), date:$('#o-d').value, note:$('#o-note').value.trim()});
-    if (p.motoId) p.from = '';
-    if (isNew) S.old.push(p);
-    save(); closeSheet(); renderOld(); toast('Salvato');
-  };
-  if (!isNew) $('#o-del').onclick = () => {
-    if (!confirm(`Eliminare "${p.name}"?`)) return;
-    S.old = S.old.filter(x => x !== p); save(); closeSheet(); renderOld();
-  };
-}
-
 /* ---------- Moto ---------- */
 const dueIn = (m, t) => +t.every > 0 ? Math.round(((+t.lastH || 0) + +t.every - (+m.hours || 0)) * 10) / 10 : null;
 const dueCount = () => S.motos.reduce((n, m) => n + (m.maint || []).filter(t => { const d = dueIn(m, t); return d !== null && d <= 0; }).length, 0);
@@ -894,20 +826,22 @@ function renderMix(){
   $('#mixL').value = S.mixL ? r2(S.mixL) : '';
   $('#mixAdd').innerHTML = [0.1, 0.5, 1, 2, 5, 10].map(l => `<button data-a="${l}">+ ${fmtN(l)} L</button>`).join('');
   $('#mixAdd').querySelectorAll('button').forEach(b => b.onclick = () => { S.mixL = r2((+S.mixL || 0) + +b.dataset.a); save(); $('#mixL').value = r2(S.mixL); calcMix(); });
-  $('#mixRatio').innerHTML = [32, 40, 50, 60].map(r => `<button class="chip ${S.mixRatio==r?'on':''}" data-r="${r}">1:${r}</button>`).join('');
-  $('#mixRatio').querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mixRatio = +b.dataset.r; save(); renderMix(); });
+  $('#mixRatio').innerHTML = [1.5, 2, 2.5, 3, 4].map(r => `<button class="chip ${S.mixPct==r?'on':''}" data-r="${r}">${fmtN(r)}%</button>`).join('');
+  $('#mixRatio').querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mixPct = +b.dataset.r; save(); renderMix(); });
+  $('#mixPct').value = S.mixPct;
   $('#lastBackup').textContent = S.lastBackup ? 'Ultimo backup: ' + fmtD(S.lastBackup) : 'Nessun backup ancora.';
   calcMix();
 }
 function calcMix(){
   const L = +S.mixL || 0;
-  const ml = Math.round(L * 1000 / S.mixRatio);
+  const ml = Math.round(L * 1000 * (+S.mixPct || 0) / 100);
   $('#mixOut').textContent = ml + ' ml';
   const o = mixOil();
   $('#mixNote').textContent = o ? `Hai ${fmt(o.qty, 'L')} di ${o.name}.` : 'Aggiungi un olio 2T in magazzino per scalarlo in automatico.';
   return ml;
 }
 $('#mixL').oninput = () => { S.mixL = Math.max(0, num('#mixL') ?? 0); save(); calcMix(); };
+$('#mixPct').oninput = () => { S.mixPct = Math.max(0, num('#mixPct') ?? 0); save(); $('#mixRatio').querySelectorAll('.chip').forEach(b => b.classList.toggle('on', +b.dataset.r === S.mixPct)); calcMix(); };
 $('#mixZero').onclick = () => { S.mixL = 0; save(); $('#mixL').value = ''; calcMix(); };
 $('#mixUse').onclick = () => {
   const ml = calcMix(), o = mixOil();
@@ -947,11 +881,10 @@ function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').scrollTo
 function closeSheet(){ $('#sheet').classList.remove('on'); $('#sheetBg').classList.remove('on'); document.activeElement && document.activeElement.blur(); }
 $('#sheetBg').onclick = closeSheet;
 
-$('#fab').onclick = () => ({stock:() => itemSheet(null, stockPreset()), shop:shopSheet, old:() => oldSheet(null, oldPreset())})[view]?.();
-function oldPreset(){ if (!S.osel) return {}; return S.omode === 'cat' ? {cat:S.osel} : {motoId:S.osel === '_none' ? '' : S.osel}; }
+$('#fab').onclick = () => ({stock:() => itemSheet(null, stockPreset()), shop:shopSheet})[view]?.();
 
 /* ---------- Render ---------- */
-function render(){ ({stock:renderStock, shop:renderShop, old:renderOld, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
+function render(){ ({stock:renderStock, shop:renderShop, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
 function net(){ const on = navigator.onLine; $('#dot').style.background = on ? 'var(--ok)' : 'var(--warn)'; $('#net').textContent = on ? 'online' : 'offline'; }
 addEventListener('online', net); addEventListener('offline', net); net();
 save(); render();
