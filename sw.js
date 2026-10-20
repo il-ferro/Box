@@ -1,5 +1,5 @@
 // Tiene l'app salvata sul telefono così si apre anche senza connessione.
-const CACHE = 'box-v15';
+const CACHE = 'box-v16';
 const FILES = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-180.png?v=14', './icon-192.png?v=14', './icon-512.png'];
 
 self.addEventListener('install', e => {

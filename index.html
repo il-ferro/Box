@@ -116,6 +116,11 @@ details.grp[open] summary::after{transform:rotate(90deg)}
 .urow{display:grid;grid-template-columns:1fr 70px 24px 32px;gap:6px;align-items:center;margin-bottom:8px}
 .urow select{padding:10px 8px;font-size:15px}.urow input{padding:10px 6px;text-align:center}
 .urow .uu{color:var(--muted);font-size:13px}.urow button{padding:6px 0}
+.card.slim{padding:9px 10px 9px 12px;margin-bottom:6px}
+.card.slim .row{gap:8px}.card.slim .name{font-size:15px}.card.slim .meta{font-size:12px;margin-top:1px}
+.card.slim .check{width:22px;height:22px}
+button.sm{padding:8px 10px;font-size:15px;flex:none}
+.qin{width:52px;flex:none;padding:8px 4px;text-align:center;font-size:15px}
 .offline{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
 </style>
@@ -585,35 +590,31 @@ function renderShop(){
   [...S.orders].sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(o => {
     const it = S.items.find(i => i.id === o.itemId);
     const days = Math.max(0, Math.round((Date.now() - new Date(o.date)) / 864e5));
-    html += `<div class="card" data-o="${o.id}"><div class="row">
-      <div class="grow"><div class="name">${esc(it ? it.name : o.name)}</div>
-      <div class="meta">${o.qty ? esc(it ? fmt(o.qty, it.unit) : o.qty) + ' · ' : ''}ordinato il ${fmtD(o.date)}${days ? ` (${days} gg fa)` : ''}</div></div>
-      <button class="danger" data-x aria-label="Annulla">✕</button>
-      <button class="acc" data-arr>Arrivato</button></div></div>`;
+    html += `<div class="card slim" data-o="${o.id}"><div class="row">
+      <div class="grow" data-ed><div class="name">${esc(it ? it.name : o.name)}</div>
+      <div class="meta">${o.qty ? esc(it ? fmt(o.qty, it.unit) : o.qty) + ' · ' : ''}${fmtD(o.date)}${days ? ` · ${days} gg` : ''}${o.note ? ' · ' + esc(o.note) : ''}</div></div>
+      <button class="acc sm" data-arr>Arrivato</button></div></div>`;
   });
   if (auto.length){
     html += `<h2>Da comprare · sotto scorta</h2>`;
     auto.forEach(it => {
-      html += `<div class="card" data-auto="${it.id}">
-        <div class="name">${esc(it.name)}</div>
-        <div class="meta">Hai ${fmt(it.qty, it.unit)} · avviso sotto ${fmt(it.min, it.unit)}${compat(it) ? ' · ' + esc(compat(it)) : ''}</div>
-        <div class="buyrow">
-          <span>Quantità</span>
-          <input type="number" inputmode="decimal" step="any" value="${it.buy || 1}" data-q>
-          <span>${it.unit === 'L' ? 'litri' : 'pezzi'}</span>
-        </div>
-        <div class="steps"><button data-ord>🚚 Ordinato</button><button class="acc" data-took>✓ Preso</button></div>
-      </div>`;
+      html += `<div class="card slim" data-auto="${it.id}"><div class="row">
+        <div class="grow" data-ed><div class="name">${esc(it.name)}</div>
+        <div class="meta">hai ${fmt(it.qty, it.unit)}${compat(it) ? ' · ' + esc(compat(it)) : ''}</div></div>
+        <input class="qin" type="number" inputmode="decimal" step="any" value="${it.buy || 1}" data-q aria-label="Quantità">
+        <button class="sm" data-ord aria-label="Ordinato">🚚</button>
+        <button class="acc sm" data-took aria-label="Preso">✓</button>
+      </div></div>`;
     });
+    html += `<div class="note" style="margin:-2px 4px 6px">🚚 = ordinato · ✓ = preso. Tocca il nome per modificarlo.</div>`;
   }
   html += `<h2>Lista</h2>`;
-  if (!manual.length) html += `<div class="empty">Tocca + per aggiungere qualcosa a mano.</div>`;
+  if (!manual.length) html += `<div class="empty" style="padding:16px">Tocca + per aggiungere qualcosa a mano.</div>`;
   [...manual].sort((a, b) => a.done - b.done).forEach(s => {
-    html += `<div class="card ${s.done?'done':''}" data-s="${s.id}"><div class="row">
+    html += `<div class="card slim ${s.done?'done':''}" data-s="${s.id}"><div class="row">
       <div class="check" data-ck></div>
-      <div class="grow" data-ck><div class="name">${esc(s.name)}</div>${s.qty ? `<div class="meta">${esc(s.qty)}</div>` : ''}</div>
-      ${s.done ? '' : '<button data-ord>🚚</button>'}
-      <button class="danger" data-x aria-label="Rimuovi">✕</button></div></div>`;
+      <div class="grow" data-ed><div class="name">${esc(s.name)}</div>${s.qty ? `<div class="meta">${esc(s.qty)}</div>` : ''}</div>
+      ${s.done ? '' : '<button class="sm" data-ord aria-label="Ordinato">🚚</button>'}</div></div>`;
   });
   if (manual.some(s => s.done)) html += `<button class="ghost" id="clearDone">Togli quelli spuntati</button>`;
 
@@ -622,22 +623,45 @@ function renderShop(){
   $('#shop').querySelectorAll('[data-auto]').forEach(c => {
     const it = S.items.find(i => i.id === c.dataset.auto);
     const q = () => { const v = parseFloat(String(c.querySelector('[data-q]').value).replace(',', '.')) || 0; if (v <= 0) c.querySelector('[data-q]').focus(); return v; };
+    c.querySelector('[data-ed]').onclick = () => itemSheet(it);
     c.querySelector('[data-took]').onclick = () => { const v = q(); if (!v) return; it.qty = r2(+it.qty + v); save(); renderShop(); toast(`+${fmt(v, it.unit)} in magazzino`); };
     c.querySelector('[data-ord]').onclick = () => { const v = q(); if (!v) return; addOrder({itemId:it.id, qty:v}); save(); renderShop(); toast('Spostato negli ordinati'); };
   });
   $('#shop').querySelectorAll('[data-s]').forEach(c => {
     const s = S.shop.find(x => x.id === c.dataset.s);
-    c.querySelectorAll('[data-ck]').forEach(e => e.onclick = () => { s.done = !s.done; save(); renderShop(); });
+    c.querySelector('[data-ck]').onclick = () => { s.done = !s.done; save(); renderShop(); };
+    c.querySelector('[data-ed]').onclick = () => shopSheet(s);
     const ob = c.querySelector('[data-ord]');
     if (ob) ob.onclick = () => { addOrder({itemId:'', name:s.name, qty:s.qty}); S.shop = S.shop.filter(x => x !== s); save(); renderShop(); toast('Spostato negli ordinati'); };
-    c.querySelector('[data-x]').onclick = () => { S.shop = S.shop.filter(x => x !== s); save(); renderShop(); };
   });
   $('#shop').querySelectorAll('[data-o]').forEach(c => {
     const o = S.orders.find(x => x.id === c.dataset.o);
-    c.querySelector('[data-x]').onclick = () => { if (confirm('Annullare questo ordine? Torna nella lista della spesa se serve.')){ S.orders = S.orders.filter(x => x !== o); save(); renderShop(); } };
+    c.querySelector('[data-ed]').onclick = () => orderSheet(o);
     c.querySelector('[data-arr]').onclick = () => arrivedSheet(o);
   });
   const cd = $('#clearDone'); if (cd) cd.onclick = () => { S.shop = S.shop.filter(s => !s.done); save(); renderShop(); };
+}
+/* Modifica un ordine */
+function orderSheet(o){
+  const it = S.items.find(i => i.id === o.itemId);
+  openSheet(`<h3>Modifica ordine</h3>
+    ${it ? `<div class="meta">${esc(it.name)}</div>` : `<label>Cosa</label><input id="o-n" value="${esc(o.name)}">`}
+    <div class="grid2">
+      <div><label>Quantità${it ? ' (' + (it.unit === 'L' ? 'litri' : 'pezzi') + ')' : ''}</label><input id="o-q" ${it ? 'type="number" inputmode="decimal" step="any"' : ''} value="${esc(o.qty)}"></div>
+      <div><label>Ordinato il</label><input id="o-d" type="date" value="${esc(String(o.date).slice(0,10))}"></div>
+    </div>
+    <label>Note (negozio, tracking…)</label><input id="o-note" value="${esc(o.note || '')}" placeholder="Opzionale">
+    <div class="actions"><button class="danger" id="o-del">Annulla ordine</button><button class="acc" id="o-ok">Salva</button></div>`);
+  $('#o-ok').onclick = () => {
+    if (!it){ const n = $('#o-n').value.trim(); if (!n){ $('#o-n').focus(); return; } o.name = n; }
+    o.qty = it ? Math.max(0, num('#o-q') ?? 0) : $('#o-q').value.trim();
+    o.date = $('#o-d').value || o.date; o.note = $('#o-note').value.trim();
+    save(); closeSheet(); renderShop(); toast('Salvato');
+  };
+  $('#o-del').onclick = () => {
+    if (!confirm('Annullare questo ordine?')) return;
+    S.orders = S.orders.filter(x => x !== o); save(); closeSheet(); renderShop();
+  };
 }
 function arrivedSheet(o){
   const it = S.items.find(i => i.id === o.itemId);
@@ -657,16 +681,21 @@ function arrivedSheet(o){
     save(); closeSheet(); renderShop(); toast(`+${fmt(q, it.unit)} in magazzino`);
   };
 }
-function shopSheet(){
-  openSheet(`<h3>Aggiungi alla lista</h3>
-    <label>Cosa</label><input id="s-n" placeholder="es. Pastiglie freno anteriori">
-    <label>Quantità / note</label><input id="s-q" placeholder="es. 2 pz, marca…">
-    <div class="actions"><button class="acc" id="s-ok">Aggiungi</button></div>`);
-  setTimeout(() => $('#s-n').focus(), 250);
+function shopSheet(s){
+  const isNew = !s;
+  s = s || {id:uid(), name:'', qty:'', done:false};
+  openSheet(`<h3>${isNew ? 'Aggiungi alla lista' : 'Modifica'}</h3>
+    <label>Cosa</label><input id="s-n" value="${esc(s.name)}" placeholder="es. Pastiglie freno anteriori">
+    <label>Quantità / note</label><input id="s-q" value="${esc(s.qty)}" placeholder="es. 2 pz, marca…">
+    <div class="actions">${isNew ? '' : '<button class="danger" id="s-del">Elimina</button>'}<button class="acc" id="s-ok">${isNew ? 'Aggiungi' : 'Salva'}</button></div>`);
+  if (isNew) setTimeout(() => $('#s-n').focus(), 250);
   $('#s-ok').onclick = () => {
-    const n = $('#s-n').value.trim(); if (!n) return;
-    S.shop.push({id:uid(), name:n, qty:$('#s-q').value.trim(), done:false}); save(); closeSheet(); renderShop();
+    const n = $('#s-n').value.trim(); if (!n){ $('#s-n').focus(); return; }
+    s.name = n; s.qty = $('#s-q').value.trim();
+    if (isNew) S.shop.push(s);
+    save(); closeSheet(); renderShop();
   };
+  if (!isNew) $('#s-del').onclick = () => { S.shop = S.shop.filter(x => x !== s); save(); closeSheet(); renderShop(); };
 }
 
 /* ---------- Moto ---------- */
