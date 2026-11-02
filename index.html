@@ -393,7 +393,7 @@ let view = 'stock';
 const titles = {stock:'Magazzino', shop:'Da comprare', moto:'Le mie moto', mix:'Miscela'};
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => go(b.dataset.v));
 function go(v){
-  if (v === view && v === 'moto') S.msel = null;
+  if (v === view && v === 'moto'){ S.msel = null; S.msub = null; S.csec = null; }
   if (v === view && v === 'stock'){ S.ssel = null; S.ssub = null; lowOnly = false; $('#q').value = ''; }
   view = v;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
@@ -724,6 +724,7 @@ function renderMoto(){
   const sel = S.motos.find(m => m.id === S.msel);
   $('#addMoto').style.display = sel ? 'none' : '';
   if (!S.motos.length){ $('#moto').innerHTML = `<div class="empty">Nessuna moto. Tocca "Aggiungi moto".</div>`; return; }
+  if (sel && S.msub === 'comps') return renderComps(sel);
   if (!sel){
     // elenco a blocchi
     S.msel = null;
@@ -736,7 +737,7 @@ function renderMoto(){
         <span class="tc">${due ? `<em style="color:var(--bad)">${due} ${due === 1 ? 'lavoro scaduto' : 'lavori scaduti'}</em>` : soon ? `<em>${soon} in scadenza</em>` : 'Manutenzione ok'}</span>
       </button>`;
     }).join('')}</div>`;
-    $('#moto').querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { S.msel = b.dataset.mt; save(); renderMoto(); window.scrollTo(0, 0); });
+    $('#moto').querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { S.msel = b.dataset.mt; S.msub = null; save(); renderMoto(); window.scrollTo(0, 0); });
     if (S.motos.length > 1 && !S.motos.some(m => m.pinned)) $('#moto').insertAdjacentHTML('beforeend', '<div class="note" style="text-align:center">Apri una moto e tocca 📌 per fissarla in alto.</div>');
     return;
   }
@@ -750,6 +751,7 @@ function renderMoto(){
       <div class="meta">${esc([m.year, m.note].filter(Boolean).join(' · '))}</div></div>
       <div class="qty">${(+m.hours || 0).toLocaleString('it-IT')} <small>ore</small></div></div>
       <div class="steps"><button data-h>Aggiorna ore</button><button data-v class="acc">Pezzi e oli (${nItems})</button></div>
+      <button data-comps style="width:100%;margin-top:6px">🔧 Componenti montati (${(m.comps || []).length})</button>
 
       <h2 style="margin-top:20px">Manutenzione</h2>
       ${maint.length ? maint.map(t => {
@@ -775,11 +777,12 @@ function renderMoto(){
       <button class="ghost" data-e style="margin-top:6px">Modifica moto e specifiche</button>
     </div>`;
   }).join('');
-  $('#moto [data-mback]').onclick = () => { S.msel = null; save(); renderMoto(); window.scrollTo(0, 0); };
+  $('#moto [data-mback]').onclick = () => { S.msel = null; S.msub = null; save(); renderMoto(); window.scrollTo(0, 0); };
   $('#moto [data-pin]').onclick = () => { sel.pinned = !sel.pinned; save(); renderMoto(); toast(sel.pinned ? 'Fissata in cima all\'elenco' : 'Non più fissata'); };
   $('#moto').querySelectorAll('[data-m]').forEach(c => {
     const m = S.motos.find(x => x.id === c.dataset.m);
     c.querySelector('[data-h]').onclick = () => hoursSheet(m);
+    c.querySelector('[data-comps]').onclick = () => { S.msub = 'comps'; S.csec = null; save(); renderMoto(); window.scrollTo(0, 0); };
     c.querySelector('[data-v]').onclick = () => { S.smode = 'moto'; S.ssel = m.id; S.ssub = null; lowOnly = false; $('#q').value = ''; save(); go('stock'); };
     c.querySelector('[data-l]').onclick = () => logSheet(m);
     c.querySelector('[data-e]').onclick = () => motoSheet(m);
@@ -821,6 +824,73 @@ function hoursSheet(m){
     <div class="actions"><button class="acc" id="h-ok">Salva</button></div>`);
   $('#h-ok').onclick = () => { m.hours = num('#h-v') ?? 0; save(); closeSheet(); renderMoto(); };
 }
+/* ---------- Componenti montati sulla moto ---------- */
+const SECS = [
+  {id:'ciclistica', label:'Ciclistica', icon:'🛞', sug:['Forcella','Mono','Cerchio anteriore','Cerchio posteriore','Pneumatico anteriore','Pneumatico posteriore','Freno anteriore','Freno posteriore','Dischi freno','Manubrio','Pedane','Catena','Corona','Pignone','Cuscinetti ruote','Forcellone']},
+  {id:'motore', label:'Motore', icon:'⚙️', sug:['Pistone','Cilindro','Testa','Albero motore','Biella','Frizione','Carburatore / iniezione','Lamelle','Scarico (espansione)','Silenziatore','Radiatori','Candela','Filtro aria','Valvola di scarico']},
+  {id:'cosmetica', label:'Cosmetica', icon:'🎨', sug:['Plastiche','Grafiche','Sella','Coprisella','Manopole','Paramani','Tabella portanumero','Leve','Paracoppa','Protezioni telaio']}
+];
+function renderComps(m){
+  m.comps ||= [];
+  const sec = SECS.find(s => s.id === S.csec);
+  const h = +m.hours || 0;
+  let html = `<button class="back" data-cback>‹ ${sec ? 'Componenti' : esc([m.brand, m.model].filter(Boolean).join(' '))}</button>
+    <div class="gtitle">${sec ? sec.icon + ' ' + sec.label : '🔧 Componenti'}</div>
+    <div class="meta" style="margin:-6px 0 10px">${esc(motoName(m))} · ${h.toLocaleString('it-IT')} ore</div>`;
+  if (!sec){
+    html += `<div class="tiles" style="margin-top:0">${SECS.map(s => {
+      const n = m.comps.filter(c => c.sec === s.id).length;
+      return `<button class="tile ${n ? '' : 'empty'}" data-sec="${s.id}"><span class="ti">${s.icon}</span><b>${s.label}</b>
+        <span class="tc">${n} ${n === 1 ? 'componente' : 'componenti'}</span></button>`;
+    }).join('')}</div>`;
+  } else {
+    const list = m.comps.filter(c => c.sec === sec.id).sort((a, b) => a.name.localeCompare(b.name));
+    html += list.length ? list.map(c => {
+      const since = c.hours !== '' && c.hours != null && !isNaN(+c.hours) ? Math.max(0, Math.round((h - c.hours) * 10) / 10) : null;
+      const meta = [c.brand, c.code, c.date && 'dal ' + fmtD(c.date), since !== null && fmtH(since) + ' di uso', c.note].filter(Boolean).join(' · ');
+      return `<div class="card slim" data-c="${c.id}"><div class="row"><div class="grow">
+        <div class="name">${esc(c.name)}</div><div class="meta">${esc(meta) || '&nbsp;'}</div></div><span class="meta">✎</span></div></div>`;
+    }).join('') : `<div class="empty" style="padding:18px">Ancora nessun componente in ${sec.label.toLowerCase()}.</div>`;
+    html += `<button class="acc" data-cadd style="width:100%;padding:13px;margin-top:6px">+ Aggiungi componente</button>`;
+  }
+  $('#moto').innerHTML = html;
+  $('#moto [data-cback]').onclick = () => { if (S.csec) S.csec = null; else S.msub = null; save(); renderMoto(); window.scrollTo(0, 0); };
+  $('#moto').querySelectorAll('[data-sec]').forEach(b => b.onclick = () => { S.csec = b.dataset.sec; save(); renderMoto(); window.scrollTo(0, 0); });
+  $('#moto').querySelectorAll('[data-c]').forEach(c => c.onclick = () => compSheet(m, m.comps.find(x => x.id === c.dataset.c)));
+  const add = $('#moto [data-cadd]'); if (add) add.onclick = () => compSheet(m, null, sec.id);
+}
+function compSheet(m, c, secId){
+  const isNew = !c;
+  c = c || {id:uid(), sec:secId || 'ciclistica', name:'', brand:'', code:'', date:new Date().toISOString().slice(0,10), hours:+m.hours || 0, note:''};
+  const sec = SECS.find(s => s.id === c.sec) || SECS[0];
+  openSheet(`<h3>${isNew ? 'Nuovo componente' : 'Modifica componente'}</h3><div class="meta">${esc(motoName(m))}</div>
+    <label>Componente</label><input id="c-n" list="c-sug" value="${esc(c.name)}" placeholder="es. ${esc(sec.sug[0])}">
+    <datalist id="c-sug">${sec.sug.map(x => `<option>${esc(x)}</option>`).join('')}</datalist>
+    <div class="grid2">
+      <div><label>Marca / modello</label><input id="c-b" value="${esc(c.brand)}" placeholder="es. WP XACT"></div>
+      <div><label>Sezione</label><select id="c-s">${SECS.map(s => `<option value="${s.id}" ${c.sec===s.id?'selected':''}>${s.label}</option>`).join('')}</select></div>
+    </div>
+    <div class="grid2">
+      <div><label>Montato il</label><input id="c-d" type="date" value="${esc(c.date || '')}"></div>
+      <div><label>Ore moto al montaggio</label><input id="c-h" type="number" inputmode="decimal" step="0.1" value="${c.hours ?? ''}"></div>
+    </div>
+    <label>Codice / misura</label><input id="c-code" value="${esc(c.code)}" placeholder="es. 80/100-21, 13 denti…">
+    <label>Note</label><input id="c-note" value="${esc(c.note)}" placeholder="es. Taratura, settaggi, da controllare…">
+    <div class="note">Dalle ore al montaggio l'app calcola quante ore ha fatto il componente.</div>
+    <div class="actions">${isNew ? '' : '<button class="danger" id="c-del">Elimina</button>'}<button class="acc" id="c-ok">Salva</button></div>`);
+  $('#c-ok').onclick = () => {
+    const n = $('#c-n').value.trim(); if (!n){ $('#c-n').focus(); return; }
+    const hh = num('#c-h');
+    Object.assign(c, {name:n, brand:$('#c-b').value.trim(), sec:$('#c-s').value, date:$('#c-d').value, hours:hh ?? '', code:$('#c-code').value.trim(), note:$('#c-note').value.trim()});
+    if (isNew) m.comps.push(c);
+    save(); closeSheet(); renderMoto(); toast('Salvato');
+  };
+  if (!isNew) $('#c-del').onclick = () => {
+    if (!confirm(`Togliere "${c.name}" dai componenti?`)) return;
+    m.comps = m.comps.filter(x => x !== c); save(); closeSheet(); renderMoto();
+  };
+}
+
 /* ---- Materiali usati (oli e pezzi) ---- */
 function itemOptions(m, sel){
   const list = S.items.filter(i => fits(i, m));
@@ -1057,7 +1127,7 @@ function mergeRec(b, l, r){
   b = b || {};
   const out = {};
   new Set([...Object.keys(r), ...Object.keys(l)]).forEach(k => {
-    if (k === 'log' || k === 'maint') out[k] = merge3(b[k] || [], l[k] || [], r[k] || []);
+    if (k === 'log' || k === 'maint' || k === 'comps') out[k] = merge3(b[k] || [], l[k] || [], r[k] || []);
     else out[k] = J(l[k]) !== J(b[k]) ? l[k] : r[k];
     if (out[k] === undefined) delete out[k];
   });
