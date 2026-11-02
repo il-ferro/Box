@@ -1,5 +1,5 @@
 // Tiene l'app salvata sul telefono così si apre anche senza connessione.
-const CACHE = 'box-v16';
+const CACHE = 'box-v17';
 const FILES = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-180.png?v=14', './icon-192.png?v=14', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -18,6 +18,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const sameOrigin = new URL(e.request.url).origin === location.origin;
+  if (!sameOrigin) return;   // sincronizzazione e altri siti: non toccare
   const store = res => { if (res && res.ok && sameOrigin) { const c = res.clone(); caches.open(CACHE).then(k => k.put(e.request, c)); } return res; };
   if (e.request.mode === 'navigate') {
     e.respondWith(

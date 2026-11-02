@@ -168,9 +168,14 @@ button.sm{padding:8px 10px;font-size:15px;flex:none}
       <button class="acc" style="width:100%;padding:14px;margin-top:10px" id="mixUse">Fatto, scala dal magazzino</button>
       <div class="note" id="mixNote"></div>
     </div>
+    <h2>Sincronizzazione iPhone ↔ Mac</h2>
+    <div class="card">
+      <div class="meta" style="margin:0 0 12px" id="syncStatus"></div>
+      <div class="grid2" id="syncBtns"></div>
+    </div>
     <h2>Backup</h2>
     <div class="card">
-      <div class="meta" style="margin:0 0 12px">I dati stanno solo su questo iPhone. Esporta un backup ogni tanto e salvalo in iCloud Drive.</div>
+      <div class="meta" style="margin:0 0 12px">Una copia di sicurezza in un file. Esportalo ogni tanto e salvalo in iCloud Drive.</div>
       <div class="grid2">
         <button id="exp">Esporta backup</button>
         <button id="imp">Importa backup</button>
@@ -335,11 +340,12 @@ function migrate(){
   if (!S.mf || (S.mf !== 'tutte' && !S.motos.some(m => m.id === S.mf))) S.mf = 'tutte';
   S.v = 3;
 }
-function save(){
+function saveLocal(){
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch(e){ toast('Impossibile salvare!'); }
   renderBadge();
 }
+function save(){ saveLocal(); if (typeof scheduleSync === 'function') scheduleSync(); }
 load();
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
 
@@ -981,6 +987,7 @@ function renderMix(){
   $('#mixRatio').innerHTML = [1.5, 2, 2.5, 3, 4].map(r => `<button class="chip ${S.mixPct==r?'on':''}" data-r="${r}">${fmtN(r)}%</button>`).join('');
   $('#mixRatio').querySelectorAll('.chip').forEach(b => b.onclick = () => { S.mixPct = +b.dataset.r; save(); renderMix(); });
   $('#mixPct').value = S.mixPct;
+  renderSync();
   $('#lastBackup').textContent = S.lastBackup ? 'Ultimo backup: ' + fmtD(S.lastBackup) : 'Nessun backup ancora.';
   calcMix();
 }
@@ -1028,6 +1035,176 @@ $('#impFile').onchange = async e => {
   e.target.value = '';
 };
 
+/* ================= Sincronizzazione (Supabase) =================
+   Offline-first: si lavora sempre sui dati del telefono.
+   Quando c'è rete, i cambiamenti vengono uniti con quelli dell'altro
+   dispositivo (merge a 3 vie rispetto all'ultima sincronizzazione). */
+const SKEY = 'box-sync', BKEY = 'box-sync-base';
+const COLS = ['items', 'motos', 'orders', 'shop', 'old'];   // liste con id
+const SCAL = ['mixPct'];                                    // valori singoli
+let SY = (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch(e){ return {}; } })();
+let syncState = SY.url ? 'idle' : 'off', syncMsg = '', syncing = false, syncTimer = null;
+const saveSY = () => { try { localStorage.setItem(SKEY, JSON.stringify(SY)); } catch(e){} };
+const loadBase = () => { try { return JSON.parse(localStorage.getItem(BKEY)); } catch(e){ return null; } };
+const saveBase = b => { try { localStorage.setItem(BKEY, JSON.stringify(b)); } catch(e){} };
+const syncOn = () => !!(SY.url && SY.key && SY.refresh);
+const J = x => JSON.stringify(x ?? null);
+
+function pickData(src){ const d = {}; COLS.forEach(k => d[k] = src[k] || []); SCAL.forEach(k => d[k] = src[k]); return d; }
+
+/* unisce un record cambiato su entrambi i lati, campo per campo */
+function mergeRec(b, l, r){
+  b = b || {};
+  const out = {};
+  new Set([...Object.keys(r), ...Object.keys(l)]).forEach(k => {
+    if (k === 'log' || k === 'maint') out[k] = merge3(b[k] || [], l[k] || [], r[k] || []);
+    else out[k] = J(l[k]) !== J(b[k]) ? l[k] : r[k];
+    if (out[k] === undefined) delete out[k];
+  });
+  return out;
+}
+/* merge a 3 vie di liste di oggetti con id */
+function merge3(base, local, remote){
+  const B = new Map((base || []).map(x => [x.id, x])), L = new Map((local || []).map(x => [x.id, x])), R = new Map((remote || []).map(x => [x.id, x]));
+  const ids = [...new Set([...(remote || []).map(x => x.id), ...(local || []).map(x => x.id)])];
+  const out = [];
+  ids.forEach(id => {
+    const b = B.get(id), l = L.get(id), r = R.get(id);
+    if (l && r){
+      if (J(l) === J(r) || J(l) === J(b)) out.push(r);
+      else if (J(r) === J(b)) out.push(l);
+      else out.push(mergeRec(b, l, r));
+    } else if (l){            // manca sul cloud
+      if (!b) out.push(l);                 // nuovo qui
+      else if (J(l) !== J(b)) out.push(l); // cancellato là ma modificato qui: tengo
+    } else if (r){            // manca qui
+      if (!b) out.push(r);                 // nuovo là
+      else if (J(r) !== J(b)) out.push(r); // cancellato qui ma modificato là: tengo
+    }
+  });
+  return out;
+}
+function mergeData(base, local, remote){
+  const d = {};
+  COLS.forEach(k => d[k] = merge3(base ? base[k] : [], local[k], remote[k]));
+  SCAL.forEach(k => d[k] = base && J(local[k]) !== J(base[k]) ? local[k] : (remote[k] ?? local[k]));
+  return d;
+}
+
+/* ---- chiamate a Supabase ---- */
+async function sbAuth(path, body){
+  const r = await fetch(SY.url + '/auth/v1/' + path, {method:'POST', headers:{apikey:SY.key, 'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.msg || j.error_description || j.message || ('Errore ' + r.status));
+  return j;
+}
+function setSession(j){
+  if (!j.access_token) throw new Error('Controlla l\'email per confermare l\'account, poi accedi.');
+  SY.access = j.access_token; SY.refresh = j.refresh_token; SY.exp = Date.now() + (j.expires_in || 3600) * 1000; SY.uid = j.user && j.user.id || SY.uid; saveSY();
+}
+async function token(){
+  if (SY.access && SY.exp > Date.now() + 60000) return SY.access;
+  setSession(await sbAuth('token?grant_type=refresh_token', {refresh_token:SY.refresh}));
+  return SY.access;
+}
+async function sbRest(method, query, body, prefer){
+  const h = {apikey:SY.key, Authorization:'Bearer ' + await token(), 'Content-Type':'application/json'};
+  if (prefer) h.Prefer = prefer;
+  const r = await fetch(SY.url + '/rest/v1/box_data' + query, {method, headers:h, body:body ? JSON.stringify(body) : undefined});
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('Errore ' + r.status));
+  return j;
+}
+
+/* ---- sincronizza ---- */
+async function sync(manual){
+  if (!syncOn() || syncing) return;
+  if (!navigator.onLine){ syncState = 'wait'; renderSync(); return; }
+  syncing = true; syncState = 'run'; renderSync();
+  try {
+    for (let tryN = 0; tryN < 4; tryN++){
+      const rows = await sbRest('GET', '?select=data,rev');
+      const local = pickData(S);
+      let base = loadBase();
+      if (!rows.length){
+        await sbRest('POST', '', {user_id:SY.uid, data:local, rev:1}, 'return=minimal');
+        saveBase(local); break;
+      }
+      const remote = rows[0].data, rev = rows[0].rev;
+      if (!base){
+        // primo collegamento di questo dispositivo: chiedo cosa fare
+        const useCloud = confirm('Nel cloud ci sono già dei dati.\n\nOK = usa i dati del cloud (sostituisce quelli di questo dispositivo).\nAnnulla = unisci i dati di questo dispositivo con quelli del cloud.');
+        base = useCloud ? remote : {};
+        if (useCloud){ applyData(remote); saveBase(remote); break; }
+      }
+      const merged = mergeData(base, local, remote);
+      if (J(merged) !== J(remote)){
+        const ok = await sbRest('PATCH', '?rev=eq.' + rev, {data:merged, rev:rev + 1, updated_at:new Date().toISOString()}, 'return=representation');
+        if (!ok.length) continue;   // qualcun altro ha scritto nel frattempo: riprovo
+      }
+      if (J(merged) !== J(local)) applyData(merged);
+      saveBase(merged); break;
+    }
+    SY.last = Date.now(); saveSY(); syncState = 'ok'; syncMsg = '';
+    if (manual) toast('Sincronizzato');
+  } catch(e){
+    syncState = navigator.onLine ? 'err' : 'wait'; syncMsg = e.message || String(e);
+    if (manual) toast('Sincronizzazione non riuscita');
+  }
+  syncing = false; renderSync();
+}
+function applyData(d){
+  COLS.forEach(k => S[k] = d[k] || []); SCAL.forEach(k => { if (d[k] !== undefined) S[k] = d[k]; });
+  migrate(); saveLocal(); render();
+}
+function scheduleSync(){ if (!syncOn()) return; clearTimeout(syncTimer); syncTimer = setTimeout(() => sync(), 2500); }
+
+/* ---- schermata ---- */
+function renderSync(){
+  const t = SY.last ? new Date(SY.last).toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
+  const txt = !syncOn() ? 'Non attiva: i dati stanno solo su questo dispositivo.'
+    : syncState === 'run' ? 'Sincronizzo…'
+    : syncState === 'wait' ? 'Senza rete: le modifiche partono appena torna il campo.'
+    : syncState === 'err' ? 'Errore: ' + syncMsg
+    : 'Attiva · ' + (SY.email || '') + (t ? ' · ultima ' + t : '');
+  const el = $('#syncStatus'); if (el) el.textContent = txt;
+  const b = $('#syncBtns');
+  if (b) b.innerHTML = syncOn() ? `<button id="syncNow">Sincronizza ora</button><button id="syncCfg">Impostazioni</button>` : `<button class="acc" id="syncCfg" style="grid-column:span 2">Attiva sincronizzazione</button>`;
+  const sn = $('#syncNow'); if (sn) sn.onclick = () => sync(true);
+  const sc = $('#syncCfg'); if (sc) sc.onclick = syncSheet;
+  net();
+}
+function syncSheet(){
+  openSheet(`<h3>Sincronizzazione</h3>
+    <div class="meta">Usa gli stessi dati su iPhone e Mac. Servono i dati del tuo progetto Supabase.</div>
+    <label>URL del progetto</label><input id="y-url" value="${esc(SY.url || '')}" placeholder="https://xxxx.supabase.co" autocapitalize="off" autocorrect="off">
+    <label>Chiave pubblica (anon / publishable)</label><input id="y-key" value="${esc(SY.key || '')}" placeholder="eyJ… oppure sb_publishable_…" autocapitalize="off" autocorrect="off">
+    <label>Email</label><input id="y-em" type="email" value="${esc(SY.email || '')}" autocapitalize="off">
+    <label>Password</label><input id="y-pw" type="password" placeholder="${syncOn() ? '(già collegato)' : 'almeno 6 caratteri'}">
+    <div class="actions"><button id="y-new">Crea account</button><button class="acc" id="y-in">Accedi</button></div>
+    ${syncOn() ? '<div class="actions"><button class="danger" id="y-out">Scollega questo dispositivo</button></div>' : ''}
+    <div class="note">La prima volta su un dispositivo ti chiede se usare i dati del cloud o unirli. Prima di collegare fai comunque un "Esporta backup".</div>`);
+  const go = async signup => {
+    const url = $('#y-url').value.trim().replace(/\/+$/, ''), key = $('#y-key').value.trim(), em = $('#y-em').value.trim(), pw = $('#y-pw').value;
+    if (!/^https?:\/\//.test(url) || !key || !em || pw.length < 6){ toast('Compila tutti i campi'); return; }
+    if (SY.email && SY.email !== em) localStorage.removeItem(BKEY);   // account diverso: si riparte
+    SY = {url, key, email:em}; saveSY();
+    try {
+      const j = signup ? await sbAuth('signup', {email:em, password:pw}) : await sbAuth('token?grant_type=password', {email:em, password:pw});
+      setSession(j); closeSheet(); toast(signup ? 'Account creato' : 'Collegato'); sync(true);
+    } catch(e){ SY.refresh = null; saveSY(); toast(e.message.slice(0, 60)); renderSync(); }
+  };
+  $('#y-new').onclick = () => go(true);
+  $('#y-in').onclick = () => go(false);
+  const out = $('#y-out'); if (out) out.onclick = () => {
+    if (!confirm('Scollegare? I dati restano su questo dispositivo e nel cloud.')) return;
+    SY = {url:SY.url, key:SY.key, email:SY.email}; saveSY(); localStorage.removeItem(BKEY); syncState = 'off'; closeSheet(); renderSync();
+  };
+}
+addEventListener('online', () => sync());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sync(); });
+setInterval(() => { if (document.visibilityState === 'visible') sync(); }, 60000);
+
 /* ---------- Sheet ---------- */
 function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').scrollTop = 0; $('#sheet').classList.add('on'); $('#sheetBg').classList.add('on'); }
 function closeSheet(){ $('#sheet').classList.remove('on'); $('#sheetBg').classList.remove('on'); document.activeElement && document.activeElement.blur(); }
@@ -1037,9 +1214,15 @@ $('#fab').onclick = () => ({stock:() => itemSheet(null, stockPreset()), shop:sho
 
 /* ---------- Render ---------- */
 function render(){ ({stock:renderStock, shop:renderShop, moto:renderMoto, mix:renderMix})[view](); renderBadge(); }
-function net(){ const on = navigator.onLine; $('#dot').style.background = on ? 'var(--ok)' : 'var(--warn)'; $('#net').textContent = on ? 'online' : 'offline'; }
+function net(){
+  const on = navigator.onLine, so = typeof syncOn === 'function' && syncOn();
+  const st = !on ? ['var(--warn)', so ? 'offline · in attesa' : 'offline']
+    : !so ? ['var(--ok)', 'online']
+    : syncState === 'err' ? ['var(--bad)', 'errore sync'] : syncState === 'run' ? ['var(--warn)', 'sincronizzo…'] : ['var(--ok)', 'sincronizzato'];
+  $('#dot').style.background = st[0]; $('#net').textContent = st[1];
+}
 addEventListener('online', net); addEventListener('offline', net); net();
-save(); render();
+saveLocal(); render(); renderSync(); sync();
 
 /* ---------- Offline ---------- */
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
